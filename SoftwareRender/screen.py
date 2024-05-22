@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Variáveis para os parâmetros, no caso é uma lista com os valores
 # obtidos nos entrys do tkinter
@@ -45,6 +47,9 @@ class Screen():
         
         self.app.mainloop()
     
+    def quit(self, event=None):
+        self.app.quit()  
+    
     def binds(self):
         
        # Botão 1 do teclado para printar os valores obtidos nos entrys
@@ -53,6 +58,17 @@ class Screen():
         # Botão 2 do teclado para pegar os valores dos entrys
         self.app.bind("<F2>", self.get_values)
         
+        
+        
+        # Botao 9 do teclado para plotar o gráfico do objeto
+        self.app.bind("<F9>", self.plota_grafico)
+        
+        # Botao 10 do teclado para deletar o gráfico do objeto
+        self.app.bind("<F10>", self.plota_grafico)
+        
+        # Botao 12 do teclado fecha o programa
+        self.app.bind("<F12>", self.quit)
+      
     def print_values(self, event):
             
         # Printa os valores obtidos nos entrys
@@ -365,12 +381,75 @@ class Screen():
         
         self.entry_janela_mundo_yMax = ctk.CTkEntry(self.frame_janela_mundo, width=100, placeholder_text=10)
         self.entry_janela_mundo_yMax.grid(row=2, column=3, pady=10)
+       
+    def plota_grafico(self, event):
         
+        # Cria um subplot dependendo do número de classes criadas na lista
+        # files_classes
+
+        # Testa se o evento é o F9
+        if event.keysym == "F9":
+            
+            # Número de subplots, no caso é o número de classes de objetos
+            n_subplots = len(self.files_classes)
+
+            # Cria os subplots 2D na parte de cima
+            fig, axs = plt.subplots(2, n_subplots)
+
+            # Adiciona um título ao subplot
+            fig.suptitle('Visualização dos Objetos 2D e 3D')
+
+            for ax in axs.flat:
+                
+                # Retira as bordas dos subplots
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.spines['left'].set_visible(False)
+                ax.spines['bottom'].set_visible(False) 
+                
+                # Retira os eixos dos subplots
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                
+            
+            for i in range(n_subplots):
+                
+                # Plota os pontos x e y nos gráficos 2D
+                axs[0, i].plot(self.files_classes[i].x, self.files_classes[i].y)
+
+                # Transforma os subplots da parte de baixo em 3D
+                axs[1, i] = fig.add_subplot(2, n_subplots, n_subplots+i+1, projection='3d')
+
+                # Plota os pontos x, y e z nos gráficos 3D
+                axs[1, i].plot_surface(self.files_classes[i].xn, self.files_classes[i].yn, self.files_classes[i].zn)
+
+
+            # Cria um canvas para o gráfico
+            self.canvas_grafico = FigureCanvasTkAgg(fig, master=self.app)
+            self.canvas_grafico.draw()
+            self.canvas_grafico.get_tk_widget().grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        elif event.keysym == "F10":
+            # Deleta o canvas do gráfico
+            self.canvas_grafico.get_tk_widget().destroy()
+         
     def plota_objetos(self):
+        
+        # Plota um cubo na tela
+        def cube3D(x1, y1, x2, y2, depth, fcolor="black", bcolor="grey"):
+            self.canvas.create_line(x1, y2, x1+depth, y2-depth, fill=fcolor)
+            self.canvas.create_line(x1+depth, y2-depth, x1+depth, y1-depth, fill=fcolor)
+            self.canvas.create_line(x1+depth, y2-depth, x2+depth, y2-depth, fill=fcolor)
+            self.canvas.create_rectangle(x1, y1, x2, y2, outline=fcolor, fill=bcolor)
+            self.canvas.create_line(x1, y1, x1+depth, y1-depth, fill=fcolor)
+            self.canvas.create_line(x1+depth, y1-depth, x2+depth, y1-depth, fill=fcolor)
+            self.canvas.create_line(x2+depth, y1-depth, x2+depth, y2-depth, fill=fcolor)
+            self.canvas.create_line(x2+depth, y1-depth, x2, y1, fill=fcolor)
+            self.canvas.create_line(x2+depth, y2-depth, x2, y2, fill=fcolor)
         
         # -> Está função pega os pontos xn, yn, zn e plota no canvas. No caso
         #    eles estão armazenados no files_classes que é uma lista de objetos
         #    todos contendo os pontos dos arquivos de pontos_3d -> xn, yn e zn
         
-        # Plota os objetos no canvas, pegando os pontos do xn, yn e zn
-        pass
+        cube3D(100, 100, 250, 200, 50)
+        
