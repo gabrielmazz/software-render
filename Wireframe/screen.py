@@ -11,7 +11,7 @@ class Screen_Wireframe():
         
         self.app = ctk.CTk()
         self.app.title("Wireframe")
-        self.app.geometry("800x800")
+        self.app.geometry("1610x900")
         
         self.points = []
         
@@ -19,24 +19,47 @@ class Screen_Wireframe():
         self.grid()
         
     def run(self):
+        
+        # Cria as binds para os botões
+        self.binds()
+        
         self.app.mainloop()
+        
+    def binds(self):
+        
+        # Botao 12 do teclado fecha o programa
+        self.app.bind("<F12>", self.quit)
+    
+    def quit(self, event=None):
+        
+        # Destroi a tela principal
+        self.app.destroy()
         
     def create_frame_grid(self):
         
-        # Cria um frame para o canvas
-        self.frame_canvas = ctk.CTkFrame(self.app)
-        self.frame_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        # Define a configuração de colunas, dividindo em 2
+        self.app.grid_columnconfigure(0, weight=1)
+        self.app.grid_columnconfigure(1, weight=1)
         
-        # Cria um canvas
-        self.canvas = ctk.CTkCanvas(self.frame_canvas)
-        self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-    
+        # Cria um canvas para desenhar os pontos
+        self.canvas = ctk.CTkCanvas(self.app, width=800, height=800, borderwidth=2, relief="solid")
+        self.canvas.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        # Cria um frame para lista os objetos criados
+        self.frame_objects = ctk.CTkScrollableFrame(self.app)
+        self.frame_objects.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        
+        # Adiciona titulo no frame de objetos
+        self.label_objects = ctk.CTkLabel(self.frame_objects, text="Objects criados",
+                                     text_color="white", justify="center", font=("Arial", 30))
+        self.label_objects.grid(row=0, column=0, padx=10, pady=10)
+        
     def grid(self):
         
         # Define as linhas do grid, desenhando elas no canvas
         for i in range(0, 1600, 20):
             self.canvas.create_line(i, 0, i, 900, fill="gray")
-
+            
         for i in range(0, 900, 20):
             self.canvas.create_line(0, i, 1600, i, fill="gray")
             
@@ -81,6 +104,8 @@ class Screen_Wireframe():
         # Redesenha o grid
         self.grid()
         
+        self.lista_objetos()
+        
         print("Points saved!")
           
     def delete_points_file(self):
@@ -90,3 +115,31 @@ class Screen_Wireframe():
             os.remove(os.path.join("Wireframe", "points", file))
             
         print("Points deleted!")
+        
+    def lista_objetos(self):
+        
+        # Conta a quantidade de arquivos de pontos
+        count_files = len(os.listdir(os.path.join("Wireframe", "points")))
+
+        # Itera por cada arquivo de pontos
+        for file_index in range(count_files):
+            file_name = f"points_{file_index}.txt"
+            file_path = os.path.join("Wireframe", "points", file_name)
+
+            # Cria um rótulo para o nome do arquivo
+            label_file = ctk.CTkLabel(self.frame_objects, text=f"Desenho - {file_index+1}")
+            label_file.grid(row=file_index + 1, column=0)
+
+            # Lê os pontos do arquivo
+            with open(file_path, "r") as file:
+                points = file.readlines()
+
+            # Cria a string da lista de pontos
+            points_list_str = ""
+            for point in points:
+                points_list_str += f"{point.strip()}\n"  # Remove espaços em branco e adiciona \n
+
+            # Cria um rótulo para a lista de pontos
+            label_points_list = ctk.CTkLabel(self.frame_objects, text=points_list_str,
+                                            justify="left", font=("Arial", 12))
+            label_points_list.grid(row=file_index + 1, column=1)
