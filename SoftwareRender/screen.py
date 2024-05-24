@@ -1,9 +1,12 @@
 import customtkinter as ctk
 import os
 import numpy as np
+import openmesh as om
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from SoftwareRender.pipeline.pipeline import Msru_src, Mproj_perspectiva, Mproj_paralela, Mjp, Msru_srt
+from SoftwareRender.pipeline.pipeline import Msru_src, Mproj_perspectiva, Mproj_paralela, Mjp, Msru_srt, homogenizar
+from SoftwareRender.pipeline.faces_visiveis import verifica_faces_visiveis
+from SoftwareRender.pipeline.computacao_vertices import computacao_dos_vertices
 from SoftwareRender.transformações_geometricas.transformacoes import translacao, escala, rotacao_x, rotacao_y, rotacao_z
 
 # Variáveis para os parâmetros, no caso é uma lista com os valores
@@ -26,7 +29,7 @@ class Screen():
         
         self.app = ctk.CTk()
         self.app.title("T02 - Software Render")
-        self.app.geometry("1610x900")
+        self.app.geometry("1600x900")
 
         # Define o grid da tela (tela inteira)
         self.grid_canvas_column()
@@ -44,9 +47,7 @@ class Screen():
         self.dados_ponto_focal()
         self.distancia_ao_plano()
         self.dados_janela_mundo()
-        
-        # Plota os objetos no canvas
-        self.plota_objetos()
+    
         
     def run(self):
         
@@ -520,7 +521,9 @@ class Screen():
             # Calcula a matriz de transformação Msru_srt
             Matrix_sru_srt = Msru_srt(Matrix_sru_src, Matrix_proj, Matrix_jp)
         
-        
+            # Homogeniza a matriz de transformação
+            Msru_srt_homogenizado = homogenizar(Matrix_sru_srt)
+           
         elif self.radio_var_projecao.get() == 1:
                 
             # Calcula a matriz de transformação Msru_src
@@ -537,6 +540,49 @@ class Screen():
             
             # Calcula a matriz de transformação Msru_srt
             Matrix_sru_srt = Msru_srt(Matrix_sru_src, Matrix_proj, Matrix_jp)
+    
+            # Homogeniza a matriz de transformação
+            Msru_srt_homogenizado = homogenizar(Matrix_sru_srt)
+            
+            
+        # Pega a primeira mesh da lista de meshes
+        mesh = self.files_classes[0].mesh
+        
+        self.plota_obejos_teste([mesh])
+        
+        
+        # Iterar sobre todas as faces
+        for fh in mesh.faces():
+            # Obter os vértices de cada face
+            vertices = [vh.idx() for vh in mesh.fv(fh)]
+            print("Face inicial: ", vertices)      
+    
+        # Iterar sobre todos os vértices
+        for vh in mesh.vertices():
+            # Obter a posição de cada vértice
+            position = mesh.point(vh)
+            print("Vértice inicial: ", position)
+            
+        
+        # Visualiza se as faces das mash são visiveis, passando por todas
+        # dentro da classe que está na lista files_classes
+        mesh_objetos_modificado = []
+        for objeto in self.files_classes:
+            
+            # Separa a mash do objeto (apenas por conveniência)
+            mesh = objeto.mesh
+            
+            # Verfica se as faces são visíveis
+            mesh_objetos_modificado.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
+        
+        # PROVALMENTE SEJA AQUI QUE SERA APLICADO AS SOMBRAS E TUDO MAIS
+        
+        # Computa os vertices com a matriz de transformação obtida anteriomente
+        for i in range(len(mesh_objetos_modificado)):
+            mesh_objetos_modificado[i] = computacao_dos_vertices(mesh_objetos_modificado[i], Msru_srt_homogenizado)
+        
+        # Plota os objetos na tela
+        self.plota_objetos(mesh_objetos_modificado)
     
     def plota_grafico(self, event):
         
@@ -604,24 +650,7 @@ class Screen():
         elif event.keysym == "F10":
             # Deleta o canvas do gráfico
             self.canvas_grafico.get_tk_widget().destroy()
-         
-    def plota_objetos(self):
         
-        # Plota um cubo na tela
-        def cube3D(x1, y1, x2, y2, depth, fcolor="black", bcolor="grey"):
-            self.canvas.create_line(x1, y2, x1+depth, y2-depth, fill=fcolor)
-            self.canvas.create_line(x1+depth, y2-depth, x1+depth, y1-depth, fill=fcolor)
-            self.canvas.create_line(x1+depth, y2-depth, x2+depth, y2-depth, fill=fcolor)
-            self.canvas.create_rectangle(x1, y1, x2, y2, outline=fcolor, fill=bcolor)
-            self.canvas.create_line(x1, y1, x1+depth, y1-depth, fill=fcolor)
-            self.canvas.create_line(x1+depth, y1-depth, x2+depth, y1-depth, fill=fcolor)
-            self.canvas.create_line(x2+depth, y1-depth, x2+depth, y2-depth, fill=fcolor)
-            self.canvas.create_line(x2+depth, y1-depth, x2, y1, fill=fcolor)
-            self.canvas.create_line(x2+depth, y2-depth, x2, y2, fill=fcolor)
+    def plota_objetos(self, mesh_objetos_modificado):
         
-        # -> Está função pega os pontos xn, yn, zn e plota no canvas. No caso
-        #    eles estão armazenados no files_classes que é uma lista de objetos
-        #    todos contendo os pontos dos arquivos de pontos_3d -> xn, yn e zn
-        
-        cube3D(100, 100, 250, 200, 50)
-        
+        pass

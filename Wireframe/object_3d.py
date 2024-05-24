@@ -1,6 +1,6 @@
 import os
 import numpy as np
-
+import openmesh as om
 
 class Points_Object():
     
@@ -56,6 +56,9 @@ class Points_Object():
         
         return self.y
 
+    def reverse_points(self, points):
+        return points[::-1]
+    
     def revolucion(self):
         
         # Define os pontos no eixo x e y
@@ -101,7 +104,33 @@ class Points_Object():
         self.yn = [y + initial_point[1] for y in self.yn]
 
         # Salva os pontos em um arquivo
-        self.register_points_file(list(zip(self.xn, self.yn, self.zn)))
+        #self.register_points_file(list(zip(self.xn, self.yn, self.zn)))
+
+        # Cria uma malha vazia
+        self.mesh = om.TriMesh()
+
+        # Adiciona os vértices à malha
+        vertex_handles = []
+        for i in range(len(self.xn)):
+            for j in range(len(self.theta)):
+                vertex_handles.append(self.mesh.add_vertex([self.xn[i][j], self.yn[i][j], self.zn[i][j]]))
+
+
+        # Adiciona as faces à malha
+        for i in range(len(self.xn) - 1):
+            for j in range(len(self.theta) - 1):
+                vh1 = vertex_handles[i * len(self.theta) + j]
+                vh2 = vertex_handles[i * len(self.theta) + (j + 1)]
+                vh3 = vertex_handles[(i + 1) * len(self.theta) + j]
+                vh4 = vertex_handles[(i + 1) * len(self.theta) + (j + 1)]
+                self.mesh.add_face(vh1, vh2, vh4)
+                self.mesh.add_face(vh1, vh4, vh3)
+            
+        # # Iterar sobre todas as faces
+        # for fh in self.mesh.faces():
+        #     # Obter os vértices de cada face
+        #     vertices = [vh.idx() for vh in self.mesh.fv(fh)]
+        #     print("Face: ", vertices)      
     
     def register_points_file(self, points):
         

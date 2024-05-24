@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import constants
 
 # A base ortonormal do SRC define a matriz de rotações que alinha os eixos do 
 # SRC aos eixos do SRU.
@@ -80,3 +81,28 @@ def Msru_srt(Msru_src, Mproj, Mjp):
     Msru_srt = np.dot(Mjp, np.dot(Mproj, Msru_src))
 
     return Msru_srt
+
+
+def homogenizar(Msru_srt):
+    
+    # Recebe o fator de homogenização, utilizado para dividir os pontos
+    h_coluna_1 = Msru_srt[3][0]
+    h_coluna_2 = Msru_srt[3][1]
+    h_coluna_3 = Msru_srt[3][2]
+    h_coluna_4 = Msru_srt[3][3]
+    
+    # Evita divisão por zero
+    epsilon = constants.epsilon_0
+    h_coluna_1 = h_coluna_1 if h_coluna_1 != 0 else epsilon
+    h_coluna_2 = h_coluna_2 if h_coluna_2 != 0 else epsilon
+    h_coluna_3 = h_coluna_3 if h_coluna_3 != 0 else epsilon
+    h_coluna_4 = h_coluna_4 if h_coluna_4 != 0 else epsilon
+    
+    # Homogenizando a matriz
+    Msru_srt_homogenizado = np.array([[(Msru_srt[0][0] / h_coluna_1), (Msru_srt[0][1] / h_coluna_2), (Msru_srt[0][2] / h_coluna_3), (Msru_srt[0][3] / h_coluna_4)],
+                                      [(Msru_srt[1][0] / h_coluna_1), (Msru_srt[1][1] / h_coluna_2), (Msru_srt[1][2] / h_coluna_3), (Msru_srt[1][3] / h_coluna_4)],
+                                      [Msru_srt[2][0], Msru_srt[2][1], Msru_srt[2][2], Msru_srt[2][3]],
+                                      [(h_coluna_1 / h_coluna_1), (h_coluna_2 / h_coluna_2), (h_coluna_3 / h_coluna_3), (h_coluna_4 / h_coluna_4)]])
+    
+    return Msru_srt_homogenizado
+    
