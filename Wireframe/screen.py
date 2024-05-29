@@ -94,6 +94,11 @@ class Screen_Wireframe():
         with open(os.path.join("Wireframe", "points", f"points_{count}.txt"), "w") as file:
             for point in self.points:
                 file.write(f"{point[0]} {point[1]}\n")
+
+            # Adiciona na ultima linha o ponto inicial para fechar o poligono
+            # se caso o poligo tiver mais de 2 pontos
+            if len(self.points) > 2:
+                file.write(f"{self.points[0][0]} {self.points[0][1]}")
                 
         # Limpa os pontos
         self.points = []

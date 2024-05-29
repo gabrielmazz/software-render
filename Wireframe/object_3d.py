@@ -72,15 +72,15 @@ class Points_Object():
         self.x = [x - initial_point[0] for x in self.x]
         self.y = [y - initial_point[1] for y in self.y]
 
-        # Reverte os pontos
-        #self.x = self.reverse_points(self.x)
-        #self.y = self.reverse_points(self.y)
-
         # Passa o valor do INPUT_VALUE para slices
-        self.slices = 5
+        self.slices = 4
 
         # Parametriza
         self.theta = np.linspace(0, np.pi*2, self.slices)
+
+        # Adicionar um ponto extra na base para fechar a parte inferior
+        self.x.append(0)
+        self.y.append(min(self.y))  # O ponto mais baixo na y
 
         # Parametriza x, y
         self.xn = np.outer(self.x, np.cos(self.theta))
@@ -92,12 +92,7 @@ class Points_Object():
         # Cria uma array vazia para o z
         # Copia os valores de y do plano 2D para o circulo de revolução
         for i in range(len(self.x)):
-            self.zn[i:i+1,:] = np.full_like(self.zn[0, :], self.y[i])
-
-        # Adiciona o ponto inicial à revolução
-        self.xn = np.concatenate((self.xn, self.xn[0,:].reshape(1,-1)), axis=0)
-        self.yn = np.concatenate((self.yn, self.yn[0,:].reshape(1,-1)), axis=0)
-        self.zn = np.concatenate((self.zn, self.zn[0,:].reshape(1,-1)), axis=0)
+            self.zn[i:i+1, :] = np.full_like(self.zn[0, :], self.y[i])
 
         # Translada os pontos de volta à sua posição original
         self.xn = [x + initial_point[0] for x in self.xn]
@@ -125,13 +120,19 @@ class Points_Object():
                 vh4 = vertex_handles[(i + 1) * len(self.theta) + (j + 1)]
                 self.mesh.add_face(vh1, vh2, vh4)
                 self.mesh.add_face(vh1, vh4, vh3)
-            
+
         # # Iterar sobre todas as faces
         # for fh in self.mesh.faces():
         #     # Obter os vértices de cada face
         #     vertices = [vh.idx() for vh in self.mesh.fv(fh)]
-        #     print("Face: ", vertices)      
-    
+        #     print("Face inicial: ", vertices)
+
+        # # Iterar sobre todos os vértices
+        # for vh in self.mesh.vertices():
+        #     # Obter a posição de cada vértice
+        #     position = self.mesh.point(vh)
+        #     print("Vértice inicial: ", position)
+        
     def register_points_file(self, points):
         
         # Verifica o número que esta no arquivo, na pasta points, para definir

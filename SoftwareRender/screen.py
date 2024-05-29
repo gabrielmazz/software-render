@@ -1,19 +1,20 @@
 import customtkinter as ctk
+import tkinter as tk
 import os
+import copy
 import numpy as np
 import openmesh as om
 import matplotlib.pyplot as plt
+from rich.console import Console
+from rich.table import Table
+from rich import print
+
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from SoftwareRender.pipeline.pipeline import Msru_src, Mproj_perspectiva, Mproj_paralela, Mjp, Msru_srt, homogenizar
 from SoftwareRender.pipeline.faces_visiveis import verifica_faces_visiveis
+from SoftwareRender.pipeline.sombreamento import aplicacao_sombreamento
 from SoftwareRender.pipeline.computacao_vertices import computacao_dos_vertices
 from SoftwareRender.transformações_geometricas.transformacoes import translacao, escala, rotacao_x, rotacao_y, rotacao_z
-
-# Variáveis para os parâmetros, no caso é uma lista com os valores
-# obtidos nos entrys do tkinter
-global world_list, view_port_list, view_up_list, vrp_list, ponto_focal_list, distancia_ao_plano_list, janela_mundo_list
-
-world_list, view_port_list, view_up_list, vrp_list, ponto_focal_list, distancia_ao_plano_list, janela_mundo_list = [], [], [], [], [], [], []
 
 class Screen():
     
@@ -47,7 +48,23 @@ class Screen():
         self.dados_ponto_focal()
         self.distancia_ao_plano()
         self.dados_janela_mundo()
-    
+        
+        # Define os dados de sombreamento
+        self.sombreamento_Ka() 
+        self.sombreamento_Kd()
+        self.sombreamento_Ks()
+        self.luz_ambiente_Ila()
+        self.luz_pontual_Il()
+        self.coordenadas_fonte_luz()
+        self.n()
+        
+        
+        # Define parametros gerais do pipeline
+        self.Matrix_sru_src = None
+        self.Matrix_proj = None
+        self.Matrix_jp = None
+        self.Matrix_sru_srt = None
+        self.Msru_srt_homogenizado = None
         
     def run(self):
         
@@ -66,7 +83,7 @@ class Screen():
         
         # Botão 2 do teclado para pegar os valores dos entrys
         self.app.bind("<F2>", self.get_values)
-        
+          
         # Botao 9 do teclado para plotar o gráfico do objeto
         self.app.bind("<F9>", self.plota_grafico)
         
@@ -83,8 +100,7 @@ class Screen():
         self.app.grid_columnconfigure(1, weight=1)
         self.app.grid_rowconfigure(0, weight=1)
         self.app.grid_rowconfigure(1, weight=1)
-
-        # Cria um canvas para a tela principal
+        
         self.canvas = ctk.CTkCanvas(self.app, width=800, height=800, bg="white", borderwidth=2, relief="solid")
         self.canvas.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -400,17 +416,264 @@ class Screen():
         
         self.entry_janela_mundo_yMax = ctk.CTkEntry(self.frame_janela_mundo, width=100, placeholder_text=10)
         self.entry_janela_mundo_yMax.grid(row=2, column=3, pady=10)
-      
-    def print_values(self, event):
-            
-        # Printa os valores obtidos nos entrys
-        print("Valores obtidos nos entrys")
-        print("View-Port: ", view_port_list)
-        print("View-Up: ", view_up_list)
-        print("VRP: ", vrp_list)
-        print("Ponto Focal: ", ponto_focal_list)
-        print("Distância ao Plano: ", distancia_ao_plano_list)
-        print("Janela Mundo: ", janela_mundo_list)
+    
+    def sombreamento_Ka(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros do sombreamento Ka
+        self.frame_sombreamento_Ka = ctk.CTkFrame(self.frame_parameters)
+        self.frame_sombreamento_Ka.grid(row=6, column=0, sticky="nsew")
+        
+        # Configura o frame do sombreamento Ka para que tenha 3 linhas e 4 colunas
+        self.frame_sombreamento_Ka.grid_rowconfigure(0, weight=1)
+        self.frame_sombreamento_Ka.grid_rowconfigure(1, weight=1)
+        self.frame_sombreamento_Ka.grid_rowconfigure(2, weight=1)
+        self.frame_sombreamento_Ka.grid_columnconfigure(0, weight=1)
+        self.frame_sombreamento_Ka.grid_columnconfigure(1, weight=1)
+        self.frame_sombreamento_Ka.grid_columnconfigure(2, weight=1)
+        self.frame_sombreamento_Ka.grid_columnconfigure(3, weight=1)
+        
+        self.label_sombreamento_Ka = ctk.CTkLabel(self.frame_sombreamento_Ka, text="Ka",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_sombreamento_Ka.grid(row=0, column=0, pady=10)
+        
+        self.label_sombreamento_Ka_r = ctk.CTkLabel(self.frame_sombreamento_Ka, text="R",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ka_r.grid(row=1, column=0, pady=10)
+        
+        self.entry_sombreamento_Ka_r = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_r.grid(row=1, column=1, pady=10)
+        
+        self.label_sombreamento_Ka_g = ctk.CTkLabel(self.frame_sombreamento_Ka, text="G",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ka_g.grid(row=1, column=2, pady=10)
+        
+        self.entry_sombreamento_Ka_g = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_g.grid(row=1, column=3, pady=10)
+        
+        self.label_sombreamento_Ka_b = ctk.CTkLabel(self.frame_sombreamento_Ka, text="B",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ka_b.grid(row=1, column=4, pady=10)
+        
+        self.entry_sombreamento_Ka_b = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_b.grid(row=1, column=5, pady=10, padx=10)
+        
+    def sombreamento_Kd(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros do sombreamento Kd
+        self.frame_sombreamento_Kd = ctk.CTkFrame(self.frame_parameters)
+        self.frame_sombreamento_Kd.grid(row=7, column=0, sticky="nsew")
+        
+        # Configura o frame do sombreamento Kd para que tenha 3 linhas e 4 colunas
+        self.frame_sombreamento_Kd.grid_rowconfigure(0, weight=1)
+        self.frame_sombreamento_Kd.grid_rowconfigure(1, weight=1)
+        self.frame_sombreamento_Kd.grid_rowconfigure(2, weight=1)
+        self.frame_sombreamento_Kd.grid_columnconfigure(0, weight=1)
+        self.frame_sombreamento_Kd.grid_columnconfigure(1, weight=1)
+        self.frame_sombreamento_Kd.grid_columnconfigure(2, weight=1)
+        self.frame_sombreamento_Kd.grid_columnconfigure(3, weight=1)
+        
+        self.label_sombreamento_Kd = ctk.CTkLabel(self.frame_sombreamento_Kd, text="Kd",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_sombreamento_Kd.grid(row=0, column=0, pady=10)
+        
+        self.label_sombreamento_Kd_r = ctk.CTkLabel(self.frame_sombreamento_Kd, text="R",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Kd_r.grid(row=1, column=0, pady=10)
+        
+        self.entry_sombreamento_Kd_r = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_r.grid(row=1, column=1, pady=10)
+        
+        self.label_sombreamento_Kd_g = ctk.CTkLabel(self.frame_sombreamento_Kd, text="G",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Kd_g.grid(row=1, column=2, pady=10)
+        
+        self.entry_sombreamento_Kd_g = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_g.grid(row=1, column=3, pady=10)
+        
+        self.label_sombreamento_Kd_b = ctk.CTkLabel(self.frame_sombreamento_Kd, text="B",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Kd_b.grid(row=1, column=4, pady=10)
+        
+        self.entry_sombreamento_Kd_b = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_b.grid(row=1, column=5, pady=10, padx=10)
+        
+    def sombreamento_Ks(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros do sombreamento Ks
+        self.frame_sombreamento_Ks = ctk.CTkFrame(self.frame_parameters)
+        self.frame_sombreamento_Ks.grid(row=8, column=0, sticky="nsew")
+        
+        # Configura o frame do sombreamento Ks para que tenha 3 linhas e 4 colunas
+        self.frame_sombreamento_Ks.grid_rowconfigure(0, weight=1)
+        self.frame_sombreamento_Ks.grid_rowconfigure(1, weight=1)
+        self.frame_sombreamento_Ks.grid_rowconfigure(2, weight=1)
+        self.frame_sombreamento_Ks.grid_columnconfigure(0, weight=1)
+        self.frame_sombreamento_Ks.grid_columnconfigure(1, weight=1)
+        self.frame_sombreamento_Ks.grid_columnconfigure(2, weight=1)
+        self.frame_sombreamento_Ks.grid_columnconfigure(3, weight=1)
+        
+        self.label_sombreamento_Ks = ctk.CTkLabel(self.frame_sombreamento_Ks, text="Ks",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_sombreamento_Ks.grid(row=0, column=0, pady=10)
+        
+        self.label_sombreamento_Ks_r = ctk.CTkLabel(self.frame_sombreamento_Ks, text="R",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ks_r.grid(row=1, column=0, pady=10)
+        
+        self.entry_sombreamento_Ks_r = ctk.CTkEntry(self.frame_sombreamento_Ks, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ks_r.grid(row=1, column=1, pady=10)
+        
+        self.label_sombreamento_Ks_g = ctk.CTkLabel(self.frame_sombreamento_Ks, text="G",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ks_g.grid(row=1, column=2, pady=10)
+        
+        self.entry_sombreamento_Ks_g = ctk.CTkEntry(self.frame_sombreamento_Ks, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ks_g.grid(row=1, column=3, pady=10)
+        
+        self.label_sombreamento_Ks_b = ctk.CTkLabel(self.frame_sombreamento_Ks, text="B",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_sombreamento_Ks_b.grid(row=1, column=4, pady=10)
+        
+        self.entry_sombreamento_Ks_b = ctk.CTkEntry(self.frame_sombreamento_Ks, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ks_b.grid(row=1, column=5, pady=10, padx=10)
+    
+    def luz_ambiente_Ila(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros da luz ambiente Ila
+        self.frame_luz_ambiente_Ila = ctk.CTkFrame(self.frame_parameters)
+        self.frame_luz_ambiente_Ila.grid(row=9, column=0, sticky="nsew")
+        
+        # Configura o frame da luz ambiente Ila para que tenha 3 linhas e 4 colunas
+        self.frame_luz_ambiente_Ila.grid_rowconfigure(0, weight=1)
+        self.frame_luz_ambiente_Ila.grid_rowconfigure(1, weight=1)
+        self.frame_luz_ambiente_Ila.grid_rowconfigure(2, weight=1)
+        self.frame_luz_ambiente_Ila.grid_columnconfigure(0, weight=1)
+        self.frame_luz_ambiente_Ila.grid_columnconfigure(1, weight=1)
+        self.frame_luz_ambiente_Ila.grid_columnconfigure(2, weight=1)
+        self.frame_luz_ambiente_Ila.grid_columnconfigure(3, weight=1)
+        
+        self.label_luz_ambiente_Ila = ctk.CTkLabel(self.frame_luz_ambiente_Ila, text="Ila",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_luz_ambiente_Ila.grid(row=0, column=0, pady=10)
+        
+        self.label_luz_ambiente_Ila_r = ctk.CTkLabel(self.frame_luz_ambiente_Ila, text="R",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_ambiente_Ila_r.grid(row=1, column=0, pady=10)
+        
+        self.entry_luz_ambiente_Ila_r = ctk.CTkEntry(self.frame_luz_ambiente_Ila, width=100, placeholder_text=120)
+        self.entry_luz_ambiente_Ila_r.grid(row=1, column=1, pady=10)
+        
+        self.label_luz_ambiente_Ila_g = ctk.CTkLabel(self.frame_luz_ambiente_Ila, text="G",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_ambiente_Ila_g.grid(row=1, column=2, pady=10)
+        
+        self.entry_luz_ambiente_Ila_g = ctk.CTkEntry(self.frame_luz_ambiente_Ila, width=100, placeholder_text=120)
+        self.entry_luz_ambiente_Ila_g.grid(row=1, column=3, pady=10)
+        
+        self.label_luz_ambiente_Ila_b = ctk.CTkLabel(self.frame_luz_ambiente_Ila, text="B",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_ambiente_Ila_b.grid(row=1, column=4, pady=10)
+        
+        self.entry_luz_ambiente_Ila_b = ctk.CTkEntry(self.frame_luz_ambiente_Ila, width=100, placeholder_text=120)
+        self.entry_luz_ambiente_Ila_b.grid(row=1, column=5, pady=10, padx=10)
+        
+    def luz_pontual_Il(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros da luz pontual Il
+        self.frame_luz_pontual_Il = ctk.CTkFrame(self.frame_parameters)
+        self.frame_luz_pontual_Il.grid(row=10, column=0, sticky="nsew")
+        
+        # Configura o frame da luz pontual Il para que tenha 3 linhas e 4 colunas
+        self.frame_luz_pontual_Il.grid_rowconfigure(0, weight=1)
+        self.frame_luz_pontual_Il.grid_rowconfigure(1, weight=1)
+        self.frame_luz_pontual_Il.grid_rowconfigure(2, weight=1)
+        self.frame_luz_pontual_Il.grid_columnconfigure(0, weight=1)
+        self.frame_luz_pontual_Il.grid_columnconfigure(1, weight=1)
+        self.frame_luz_pontual_Il.grid_columnconfigure(2, weight=1)
+        self.frame_luz_pontual_Il.grid_columnconfigure(3, weight=1)
+        
+        self.label_luz_pontual_Il = ctk.CTkLabel(self.frame_luz_pontual_Il, text="Il",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_luz_pontual_Il.grid(row=0, column=0, pady=10)
+        
+        self.label_luz_pontual_Il_r = ctk.CTkLabel(self.frame_luz_pontual_Il, text="R",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_pontual_Il_r.grid(row=1, column=0, pady=10)
+        
+        self.entry_luz_pontual_Il_r = ctk.CTkEntry(self.frame_luz_pontual_Il, width=100, placeholder_text=150)
+        self.entry_luz_pontual_Il_r.grid(row=1, column=1, pady=10)
+        
+        self.label_luz_pontual_Il_g = ctk.CTkLabel(self.frame_luz_pontual_Il, text="G",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_pontual_Il_g.grid(row=1, column=2, pady=10)
+        
+        self.entry_luz_pontual_Il_g = ctk.CTkEntry(self.frame_luz_pontual_Il, width=100, placeholder_text=150)
+        self.entry_luz_pontual_Il_g.grid(row=1, column=3, pady=10)
+        
+        self.label_luz_pontual_Il_b = ctk.CTkLabel(self.frame_luz_pontual_Il, text="B",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_luz_pontual_Il_b.grid(row=1, column=4, pady=10)
+
+        self.entry_luz_pontual_Il_b = ctk.CTkEntry(self.frame_luz_pontual_Il, width=100, placeholder_text=150)
+        self.entry_luz_pontual_Il_b.grid(row=1, column=5, pady=10, padx=10)
+        
+    def coordenadas_fonte_luz(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros da coordenadas da fonte de luz
+        self.frame_coordenadas_fonte_luz = ctk.CTkFrame(self.frame_parameters)
+        self.frame_coordenadas_fonte_luz.grid(row=11, column=0, sticky="nsew")
+        
+        # Configura o frame das coordenadas da fonte de luz para que tenha 3 linhas e 4 colunas
+        self.frame_coordenadas_fonte_luz.grid_rowconfigure(0, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_rowconfigure(1, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_rowconfigure(2, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_columnconfigure(0, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_columnconfigure(1, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_columnconfigure(2, weight=1)
+        self.frame_coordenadas_fonte_luz.grid_columnconfigure(3, weight=1)
+        
+        self.label_coordenadas_fonte_luz = ctk.CTkLabel(self.frame_coordenadas_fonte_luz, text="Coord Luz",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_coordenadas_fonte_luz.grid(row=0, column=0, pady=10)
+        
+        self.label_coordenadas_fonte_luz_x = ctk.CTkLabel(self.frame_coordenadas_fonte_luz, text="x",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_coordenadas_fonte_luz_x.grid(row=1, column=0, pady=10)
+        
+        self.entry_coordenadas_fonte_luz_x = ctk.CTkEntry(self.frame_coordenadas_fonte_luz, width=100, placeholder_text=70)
+        self.entry_coordenadas_fonte_luz_x.grid(row=1, column=1, pady=10)
+        
+        self.label_coordenadas_fonte_luz_y = ctk.CTkLabel(self.frame_coordenadas_fonte_luz, text="y",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_coordenadas_fonte_luz_y.grid(row=1, column=2, pady=10)
+        
+        self.entry_coordenadas_fonte_luz_y = ctk.CTkEntry(self.frame_coordenadas_fonte_luz, width=100, placeholder_text=20)
+        self.entry_coordenadas_fonte_luz_y.grid(row=1, column=3, pady=10)
+        
+        self.label_coordenadas_fonte_luz_z = ctk.CTkLabel(self.frame_coordenadas_fonte_luz, text="z",
+                                            text_color="White", justify="center", font=("Arial", 15))
+        self.label_coordenadas_fonte_luz_z.grid(row=1, column=4, pady=10)
+        
+        self.entry_coordenadas_fonte_luz_z = ctk.CTkEntry(self.frame_coordenadas_fonte_luz, width=100, placeholder_text=35)
+        self.entry_coordenadas_fonte_luz_z.grid(row=1, column=5, pady=10, padx=10)
+    
+    def n(self):
+        
+        # Cria um frame para o CTkScrollableFrame aonde ficará os parâmetros de n
+        self.frame_n = ctk.CTkFrame(self.frame_parameters)
+        self.frame_n.grid(row=12, column=0, sticky="nsew")
+        
+        # Configura o frame de n para que tenha 2 linhas e 2 colunas
+        self.frame_n.grid_rowconfigure(0, weight=1)
+        self.frame_n.grid_rowconfigure(1, weight=1)
+        self.frame_n.grid_columnconfigure(0, weight=1)  
+
+        self.label_n = ctk.CTkLabel(self.frame_n, text="n",
+                                            text_color="White", justify="center", font=("Arial", 20))
+        self.label_n.grid(row=0, column=0, pady=10)
+        
+        self.entry_n = ctk.CTkEntry(self.frame_n, width=100, placeholder_text=2.15)
+        self.entry_n.grid(row=1, column=0, pady=10)
     
     def get_values(self, event):
         
@@ -464,17 +727,59 @@ class Screen():
             if self.entry_janela_mundo_yMax.get() == "":
                 self.entry_janela_mundo_yMax.insert(0, 10)                
             
-            # ...
-        
-        # Limpa as listas de parâmetros
-        view_port_list.clear()
-        view_up_list.clear()
-        vrp_list.clear()
-        ponto_focal_list.clear()
-        distancia_ao_plano_list.clear()
-        janela_mundo_list.clear()
-        
-        # Verificaçãp dos entrys
+            # Verificação do sombreamento Ka
+            if self.entry_sombreamento_Ka_r.get() == "":
+                self.entry_sombreamento_Ka_r.insert(0, 0.5)
+            if self.entry_sombreamento_Ka_g.get() == "":
+                self.entry_sombreamento_Ka_g.insert(0, 0.5)
+            if self.entry_sombreamento_Ka_b.get() == "":
+                self.entry_sombreamento_Ka_b.insert(0, 0.5)
+                
+            # Verificação do sombreamento Kd
+            if self.entry_sombreamento_Kd_r.get() == "":
+                self.entry_sombreamento_Kd_r.insert(0, 0.5)
+            if self.entry_sombreamento_Kd_g.get() == "":
+                self.entry_sombreamento_Kd_g.insert(0, 0.5)
+            if self.entry_sombreamento_Kd_b.get() == "":
+                self.entry_sombreamento_Kd_b.insert(0, 0.5)
+                
+            # Verificação do sombreamento Ks
+            if self.entry_sombreamento_Ks_r.get() == "":
+                self.entry_sombreamento_Ks_r.insert(0, 0.5)
+            if self.entry_sombreamento_Ks_g.get() == "":
+                self.entry_sombreamento_Ks_g.insert(0, 0.5)
+            if self.entry_sombreamento_Ks_b.get() == "":
+                self.entry_sombreamento_Ks_b.insert(0, 0.5)
+             
+            # Verificação da luz ambiente Ila
+            if self.entry_luz_ambiente_Ila_r.get() == "":
+                self.entry_luz_ambiente_Ila_r.insert(0, 120)
+            if self.entry_luz_ambiente_Ila_g.get() == "":
+                self.entry_luz_ambiente_Ila_g.insert(0, 120)
+            if self.entry_luz_ambiente_Ila_b.get() == "":
+                self.entry_luz_ambiente_Ila_b.insert(0, 120)
+                
+            # Verificação da luz pontual Il
+            if self.entry_luz_pontual_Il_r.get() == "":
+                self.entry_luz_pontual_Il_r.insert(0, 150)
+            if self.entry_luz_pontual_Il_g.get() == "":
+                self.entry_luz_pontual_Il_g.insert(0, 150)
+            if self.entry_luz_pontual_Il_b.get() == "":
+                self.entry_luz_pontual_Il_b.insert(0, 150)
+                
+            # Verificação das coordenadas da fonte de luz
+            if self.entry_coordenadas_fonte_luz_x.get() == "":
+                self.entry_coordenadas_fonte_luz_x.insert(0, 70)
+            if self.entry_coordenadas_fonte_luz_y.get() == "":
+                self.entry_coordenadas_fonte_luz_y.insert(0, 20)
+            if self.entry_coordenadas_fonte_luz_z.get() == "":
+                self.entry_coordenadas_fonte_luz_z.insert(0, 35)   
+                
+            # Verificação de n
+            if self.entry_n.get() == "":
+                self.entry_n.insert(0, 2.15)
+                
+        # Verificação dos entrys
         verificacao_valores_entry()
     
         # Pega os valores dos entrys -> Apenas por conveniência
@@ -502,55 +807,104 @@ class Screen():
         janela_mundo_yMin = int(self.entry_janela_mundo_yMin.get())
         janela_mundo_yMax = int(self.entry_janela_mundo_yMax.get())
         
+        sombreamento_Ka_r = float(self.entry_sombreamento_Ka_r.get())
+        sombreamento_Ka_g = float(self.entry_sombreamento_Ka_g.get())
+        sombreamento_Ka_b = float(self.entry_sombreamento_Ka_b.get())
+        
+        sombreamento_Kd_r = float(self.entry_sombreamento_Kd_r.get())
+        sombreamento_Kd_g = float(self.entry_sombreamento_Kd_g.get())
+        sombreamento_Kd_b = float(self.entry_sombreamento_Kd_b.get())
+        
+        sombreamento_Ks_r = float(self.entry_sombreamento_Ks_r.get())
+        sombreamento_Ks_g = float(self.entry_sombreamento_Ks_g.get())
+        sombreamento_Ks_b = float(self.entry_sombreamento_Ks_b.get())
+        
+        luz_ambiente_Ila_r = float(self.entry_luz_ambiente_Ila_r.get())
+        luz_ambiente_Ila_g = float(self.entry_luz_ambiente_Ila_g.get())
+        luz_ambiente_Ila_b = float(self.entry_luz_ambiente_Ila_b.get())
+        
+        luz_pontual_Il_r = float(self.entry_luz_pontual_Il_r.get())
+        luz_pontual_Il_g = float(self.entry_luz_pontual_Il_g.get())
+        luz_pontual_Il_b = float(self.entry_luz_pontual_Il_b.get())
+        
+        coordenadas_fonte_luz_x = int(self.entry_coordenadas_fonte_luz_x.get())
+        coordenadas_fonte_luz_y = int(self.entry_coordenadas_fonte_luz_y.get())
+        coordenadas_fonte_luz_z = int(self.entry_coordenadas_fonte_luz_z.get())
+        
+        n = float(self.entry_n.get())
         
         # Verifica o tipo de projeção, para depois calcular as matrizes
         if self.radio_var_projecao.get() == 0:
                 
             # Calcula a matriz de transformação Msru_src
-            Matrix_sru_src = Msru_src(vrp_x, vrp_y, vrp_z, 
+            self.Matrix_sru_src = Msru_src(vrp_x, vrp_y, vrp_z, 
                                 ponto_focal_x, ponto_focal_y, ponto_focal_z, 
                                 view_up_x, view_up_y, view_up_z)
             
             # Calcula a matriz de projeção
-            Matrix_proj = Mproj_perspectiva(dp)
+            self.Matrix_proj = Mproj_perspectiva(dp)
             
             # Calcula a matriz de janela de projeção
-            Matrix_jp = Mjp(uMin, uMax, vMin, vMax,
+            self.Matrix_jp = Mjp(uMin, uMax, vMin, vMax,
                         janela_mundo_xMin, janela_mundo_xMax, janela_mundo_yMin, janela_mundo_yMax)
             
             # Calcula a matriz de transformação Msru_srt
-            Matrix_sru_srt = Msru_srt(Matrix_sru_src, Matrix_proj, Matrix_jp)
+            self.Matrix_sru_srt = Msru_srt(self.Matrix_sru_src, self.Matrix_proj, self.Matrix_jp)
         
             # Homogeniza a matriz de transformação
-            Msru_srt_homogenizado = homogenizar(Matrix_sru_srt)
+            self.Msru_srt_homogenizado = homogenizar(self.Matrix_sru_srt)
            
         elif self.radio_var_projecao.get() == 1:
                 
             # Calcula a matriz de transformação Msru_src
-            Matrix_sru_src = Msru_src(vrp_x, vrp_y, vrp_z, 
+            self.Matrix_sru_src = Msru_src(vrp_x, vrp_y, vrp_z, 
                                 ponto_focal_x, ponto_focal_y, ponto_focal_z, 
                                 view_up_x, view_up_y, view_up_z)
             
             # Calcula a matriz de projeção
-            Matrix_proj = Mproj_paralela()
+            self.Matrix_proj = Mproj_paralela()
             
             # Calcula a matriz de janela de projeção
-            Matrix_jp = Mjp(uMin, uMax, vMin, vMax,
+            self.Matrix_jp = Mjp(uMin, uMax, vMin, vMax,
                         janela_mundo_xMin, janela_mundo_xMax, janela_mundo_yMin, janela_mundo_yMax)
             
             # Calcula a matriz de transformação Msru_srt
-            Matrix_sru_srt = Msru_srt(Matrix_sru_src, Matrix_proj, Matrix_jp)
+            self.Matrix_sru_srt = Msru_srt(self.Matrix_sru_src, self.Matrix_proj, self.Matrix_jp)
     
             # Homogeniza a matriz de transformação
-            Msru_srt_homogenizado = homogenizar(Matrix_sru_srt)
+            self.Msru_srt_homogenizado = homogenizar(self.Matrix_sru_srt)
             
+        # # Pega a primeira mesh da lista de meshes
+        # mesh = self.files_classes[0].mesh
+
+        # # Iterar sobre todas as faces
+        # for fh in mesh.faces():
+        #     # Obter os vértices de cada face
+        #     vertices = [vh.idx() for vh in mesh.fv(fh)]
+        #     print("Face inicial: ", vertices)      
+    
+        # # Iterar sobre todos os vértices
+        # for vh in mesh.vertices():
+        #     # Obter a posição de cada vértice
+        #     position = mesh.point(vh)
+        #     print("Vértice inicial: ", position)
             
+        
+        # Visualiza se as faces das mash são visiveis, passando por todas
+        # dentro da classe que está na lista files_classes
+        mesh_objetos_modificado = []
+        for objeto in self.files_classes:
+            
+            # Separa a mash do objeto (apenas por conveniência)
+            mesh = copy.deepcopy(objeto.mesh)
+            
+            # Verfica se as faces são visíveis
+            mesh_objetos_modificado.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
+        
+        
         # Pega a primeira mesh da lista de meshes
-        mesh = self.files_classes[0].mesh
-        
-        self.plota_obejos_teste([mesh])
-        
-        
+        mesh = mesh_objetos_modificado[0]
+
         # Iterar sobre todas as faces
         for fh in mesh.faces():
             # Obter os vértices de cada face
@@ -562,28 +916,147 @@ class Screen():
             # Obter a posição de cada vértice
             position = mesh.point(vh)
             print("Vértice inicial: ", position)
-            
         
-        # Visualiza se as faces das mash são visiveis, passando por todas
-        # dentro da classe que está na lista files_classes
-        mesh_objetos_modificado = []
-        for objeto in self.files_classes:
-            
-            # Separa a mash do objeto (apenas por conveniência)
-            mesh = objeto.mesh
-            
-            # Verfica se as faces são visíveis
-            mesh_objetos_modificado.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
         
-        # PROVALMENTE SEJA AQUI QUE SERA APLICADO AS SOMBRAS E TUDO MAIS
-        
+        # Aplicação do sombreamento constante
+        mesh_objeto_modificado_sombreamento = []
+        for i in range(len(mesh_objetos_modificado)):
+            
+            # Aplica uma copia da mesh modificada
+            mesh_objeto_sombreamento = copy.deepcopy(mesh_objetos_modificado[i])
+            
+            print(mesh_objeto_sombreamento)
+            
+            # Percorre todas as faces da mesh
+            for fh in mesh_objetos_modificado[i].faces():
+                
+                mesh_objeto_sombreamento.request_face_colors()
+                
+                color = aplicacao_sombreamento(mesh_objetos_modificado[i], fh, 
+                                                vrp_x, vrp_y, vrp_z,
+                                                luz_ambiente_Ila_r, luz_ambiente_Ila_g, luz_ambiente_Ila_b,
+                                                luz_pontual_Il_r, luz_pontual_Il_g, luz_pontual_Il_b,
+                                                coordenadas_fonte_luz_x, coordenadas_fonte_luz_y, coordenadas_fonte_luz_z,
+                                                sombreamento_Ka_r, sombreamento_Ka_g, sombreamento_Ka_b,
+                                                sombreamento_Kd_r, sombreamento_Kd_g, sombreamento_Kd_b,
+                                                sombreamento_Ks_r, sombreamento_Ks_g, sombreamento_Ks_b, n)
+                
+                # Garante que a cor não passe os limites e esteja entre 0 e 255
+                color = np.clip(color, 0, 255)
+                
+                print(color)
+            
+                # Adiciona a mesh modificada com o sombreamento constante
+                mesh_objeto_sombreamento.set_color(fh, color) # -> ERRADO
+                
+            # Adiciona a mesh modificada com o sombreamento constante
+            mesh_objeto_modificado_sombreamento.append(mesh_objeto_sombreamento)
+           
+           
+        # Pega a primeira mesh da lista de meshes
+        mesh = mesh_objeto_modificado_sombreamento[0] 
+        # Iterate over all faces and print their colors
+        for fh in mesh.faces():
+            color = mesh.color(fh)
+            print(f"Face {fh.idx()}: Color {color}")                                  
+                                   
         # Computa os vertices com a matriz de transformação obtida anteriomente
         for i in range(len(mesh_objetos_modificado)):
-            mesh_objetos_modificado[i] = computacao_dos_vertices(mesh_objetos_modificado[i], Msru_srt_homogenizado)
+            mesh_objetos_modificado[i] = computacao_dos_vertices(mesh_objetos_modificado[i], self.Msru_srt_homogenizado)
         
-        # Plota os objetos na tela
-        self.plota_objetos(mesh_objetos_modificado)
+        
+        # # Pega a primeira mesh da lista de meshes
+        # mesh = mesh_objetos_modificado[0]
+        
+        # # Iterar sobre todas as faces
+        # for fh in mesh.faces():
+        #     # Obter os vértices de cada face
+        #     vertices = [vh.idx() for vh in mesh.fv(fh)]
+        #     print("Face final: ", vertices)      
     
+        # # Iterar sobre todos os vértices
+        # for vh in mesh.vertices():
+        #     # Obter a posição de cada vértice
+        #     position = mesh.point(vh)
+        #     print("Vértice final: ", position)
+            
+        # Plota os objetos na tela
+        #self.plota_objetos(mesh_objetos_modificado)
+    
+    def print_values(self, event):
+            
+        console = Console()
+        
+        # Printa os valores dos entrys com o rich em formato de tabela
+        # -> View-Port
+        table = Table(title="View-Port", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("uMin", self.entry_view_port_uMin.get())
+        table.add_row("uMax", self.entry_view_port_uMax.get())
+        table.add_row("vMin", self.entry_view_port_vMin.get())
+        table.add_row("vMax", self.entry_view_port_vMax.get())
+        console.print(table)
+        
+        # -> View-Up
+        table = Table(title="View-Up", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("x", self.entry_view_up_x.get())
+        table.add_row("y", self.entry_view_up_y.get())
+        table.add_row("z", self.entry_view_up_z.get())
+        console.print(table)
+        
+        # -> VRP
+        table = Table(title="VRP", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("x", self.entry_vrp_x.get())
+        table.add_row("y", self.entry_vrp_y.get())
+        table.add_row("z", self.entry_vrp_z.get())
+        console.print(table)
+        
+        # -> Ponto Focal
+        table = Table(title="Ponto Focal", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("x", self.entry_ponto_focal_x.get())
+        table.add_row("y", self.entry_ponto_focal_y.get())
+        table.add_row("z", self.entry_ponto_focal_z.get())
+        console.print(table)
+        
+        # -> Distância ao Plano
+        table = Table(title="Distância ao Plano", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("DP", self.entry_distancia_ao_plano_projecao.get())
+        console.print(table)
+        
+        # -> Janela Mundo
+        table = Table(title="Janela Mundo", show_edge=True)
+        table.add_column("Parâmetro", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valor", justify="center", style="magenta", no_wrap=True)
+        table.add_row("xMin", self.entry_janela_mundo_xMin.get())
+        table.add_row("xMax", self.entry_janela_mundo_xMax.get())
+        table.add_row("yMin", self.entry_janela_mundo_yMin.get())
+        table.add_row("yMax", self.entry_janela_mundo_yMax.get())
+        console.print(table)
+        
+        # Printa os valores das matrizes com o rich em formato de tabela
+        table = Table(title="Matrizes do Pipeline", show_edge=True)
+        table.add_column("Matriz", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Valores", justify="center", style="magenta", no_wrap=True)
+        table.add_row("Matriz -> sru_src", str(self.Matrix_sru_src))
+        table.add_row("\n", "\n")
+        table.add_row("Matriz -> projeção", str(self.Matrix_proj))
+        table.add_row("\n", "\n")
+        table.add_row("Matriz -> janela de projeção", str(self.Matrix_jp))
+        table.add_row("\n", "\n")
+        table.add_row("Matriz -> sru_srt", str(self.Matrix_sru_srt))
+        table.add_row("\n", "\n")
+        table.add_row("Matriz -> sru_srt homogenizada", str(self.Msru_srt_homogenizado))
+        console.print(table)
+        
     def plota_grafico(self, event):
         
         # Cria um subplot dependendo do número de classes criadas na lista
@@ -616,16 +1089,21 @@ class Screen():
             
             # Verifica se o número na lista files_classes é igual a 1
             if (n_subplots == 1):
-
+                
                 # Plota os pontos x e y nos gráficos 2D
                 axs[0].plot(self.files_classes[0].x, self.files_classes[0].y)
 
                 # Transforma os subplots da parte de baixo em 3D
                 axs[1] = fig.add_subplot(2, n_subplots, n_subplots+1, projection='3d')
 
-                # Plota os pontos x, y e z nos gráficos 3D
+                # Plota os pontos x, y, z
                 axs[1].plot_surface(self.files_classes[0].xn, self.files_classes[0].yn, self.files_classes[0].zn)
             
+                # Coloca os eixos x, y e z nos gráficos 3D
+                axs[1].set_xlabel('X')
+                axs[1].set_ylabel('Y')
+                axs[1].set_zlabel('Z')
+                
             else:
                 
                 for i in range(n_subplots):
@@ -639,9 +1117,6 @@ class Screen():
                     # Plota os pontos x, y e z nos gráficos 3D
                     axs[1, i].plot_surface(self.files_classes[i].xn, self.files_classes[i].yn, self.files_classes[i].zn)
 
-            
-                
-
             # Cria um canvas para o gráfico
             self.canvas_grafico = FigureCanvasTkAgg(fig, master=self.app)
             self.canvas_grafico.draw()
@@ -650,7 +1125,3 @@ class Screen():
         elif event.keysym == "F10":
             # Deleta o canvas do gráfico
             self.canvas_grafico.get_tk_widget().destroy()
-        
-    def plota_objetos(self, mesh_objetos_modificado):
-        
-        pass

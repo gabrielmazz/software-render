@@ -105,4 +105,3 @@ def homogenizar(Msru_srt):
                                       [(h_coluna_1 / h_coluna_1), (h_coluna_2 / h_coluna_2), (h_coluna_3 / h_coluna_3), (h_coluna_4 / h_coluna_4)]])
     
     return Msru_srt_homogenizado
-    
