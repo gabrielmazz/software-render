@@ -27,7 +27,6 @@ if __name__ == "__main__":
         os.remove(os.path.join("Wireframe", "points_3d", file))
     
     # Revolução do objeto
-
     files_classes = []
 
     # Cria a quantidade de classes de objetos referente a quantidade de arquivos de pontos

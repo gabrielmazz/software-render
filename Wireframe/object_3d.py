@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import openmesh as om
+import tkinter as tk
 
 class Points_Object():
     
@@ -27,18 +28,26 @@ class Points_Object():
         self.yn = None
         self.zn = None
         
+        # Define os parametros de rotacao, translacao e escala
+        self.rotacao = np.array([0, 0, 0]) # -> [rotacao_x, rotacao_y, rotacao_z]
+        self.translacao = np.array([0, 0, 0])
+        self.escala = 1
+        
     def points_file_to_points_line(self):
-            
         # Abre o arquivo
         with open(os.path.join("Wireframe", "points", self.name), "r") as file:
-            
             # Lê o arquivo
             lines = file.readlines()
             
-            # Adiciona os pontos a lista
-            for line in lines:
-                x, y = line.split()
-                self.points_line.append((int(x), int(y)))    
+            # Adiciona os pontos a lista não contando a ultima linha
+            for line in lines[:-1]:
+                values = line.split()
+                if len(values) >= 2:
+                    x, y = values[:2]
+                    self.points_line.append((int(x), int(y)))   
+            
+            # Adiciona o número de fatias
+            self.slices = int(lines[-1])
 
     def points_x_2d(self):
             
@@ -60,7 +69,6 @@ class Points_Object():
         return points[::-1]
     
     def revolucion(self):
-        
         # Define os pontos no eixo x e y
         self.x = self.points_x_2d()
         self.y = self.points_y_2d()
@@ -72,15 +80,12 @@ class Points_Object():
         self.x = [x - initial_point[0] for x in self.x]
         self.y = [y - initial_point[1] for y in self.y]
 
-        # Passa o valor do INPUT_VALUE para slices
-        self.slices = 4
-
-        # Parametriza
-        self.theta = np.linspace(0, np.pi*2, self.slices)
-
         # Adicionar um ponto extra na base para fechar a parte inferior
         self.x.append(0)
         self.y.append(min(self.y))  # O ponto mais baixo na y
+        
+        # Parametriza
+        self.theta = np.linspace(0, 2 * np.pi, self.slices)
 
         # Parametriza x, y
         self.xn = np.outer(self.x, np.cos(self.theta))
@@ -89,17 +94,13 @@ class Points_Object():
         # Cria uma array z vazia do shape de x / y
         self.zn = np.zeros_like(self.xn)
 
-        # Cria uma array vazia para o z
-        # Copia os valores de y do plano 2D para o circulo de revolução
+        # Copia os valores de y do plano 2D para o círculo de revolução
         for i in range(len(self.x)):
-            self.zn[i:i+1, :] = np.full_like(self.zn[0, :], self.y[i])
+            self.zn[i, :] = self.y[i]
 
         # Translada os pontos de volta à sua posição original
-        self.xn = [x + initial_point[0] for x in self.xn]
-        self.yn = [y + initial_point[1] for y in self.yn]
-
-        # Salva os pontos em um arquivo
-        #self.register_points_file(list(zip(self.xn, self.yn, self.zn)))
+        self.xn += initial_point[0]
+        self.yn += initial_point[1]
 
         # Cria uma malha vazia
         self.mesh = om.TriMesh()
@@ -109,7 +110,6 @@ class Points_Object():
         for i in range(len(self.xn)):
             for j in range(len(self.theta)):
                 vertex_handles.append(self.mesh.add_vertex([self.xn[i][j], self.yn[i][j], self.zn[i][j]]))
-
 
         # Adiciona as faces à malha
         for i in range(len(self.xn) - 1):
@@ -121,17 +121,17 @@ class Points_Object():
                 self.mesh.add_face(vh1, vh2, vh4)
                 self.mesh.add_face(vh1, vh4, vh3)
 
-        # # Iterar sobre todas as faces
-        # for fh in self.mesh.faces():
-        #     # Obter os vértices de cada face
-        #     vertices = [vh.idx() for vh in self.mesh.fv(fh)]
-        #     print("Face inicial: ", vertices)
+        # Iterar sobre todas as faces
+        for fh in self.mesh.faces():
+            # Obter os vértices de cada face
+            vertices = [vh.idx() for vh in self.mesh.fv(fh)]
+            print("Face inicial: ", vertices)
 
-        # # Iterar sobre todos os vértices
-        # for vh in self.mesh.vertices():
-        #     # Obter a posição de cada vértice
-        #     position = self.mesh.point(vh)
-        #     print("Vértice inicial: ", position)
+        # Iterar sobre todos os vértices
+        for vh in self.mesh.vertices():
+            # Obter a posição de cada vértice
+            position = self.mesh.point(vh)
+            print("Vértice inicial: ", position)
         
     def register_points_file(self, points):
         
@@ -150,3 +150,11 @@ class Points_Object():
         
         print("Points saved!")
         
+    def update_rotacao(self, dx, dy, dz):
+        self.rotacao += np.array([dx, dy, dz])
+        
+    def update_translacao(self, dx, dy):
+        self.translacao += np.array([dx, dy, 0])
+        
+    def update_escala(self, fator):
+        self.escala *= fator

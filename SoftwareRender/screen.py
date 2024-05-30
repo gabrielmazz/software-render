@@ -11,10 +11,10 @@ from rich import print
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from SoftwareRender.pipeline.pipeline import Msru_src, Mproj_perspectiva, Mproj_paralela, Mjp, Msru_srt, homogenizar
-from SoftwareRender.pipeline.faces_visiveis import verifica_faces_visiveis
+from SoftwareRender.pipeline.visibilidade import verifica_faces_visiveis, verifica_mesh_visivel
 from SoftwareRender.pipeline.sombreamento import aplicacao_sombreamento
 from SoftwareRender.pipeline.computacao_vertices import computacao_dos_vertices
-from SoftwareRender.transformações_geometricas.transformacoes import translacao, escala, rotacao_x, rotacao_y, rotacao_z
+from SoftwareRender.transformações_geometricas.transformacoes import aplica_transformacao
 
 class Screen():
     
@@ -65,20 +65,26 @@ class Screen():
         self.Matrix_jp = None
         self.Matrix_sru_srt = None
         self.Msru_srt_homogenizado = None
+
+        
+        # Desenha todos os objetos na tela
+        for objeto in self.files_classes:
+            
+            self.draw_mesh(objeto)
         
     def run(self):
         
-        # Cria as binds para os botões
-        self.binds()
+        # Cria as binds para os botões, por padrao o objeto 1 é selecionado
+        self.binds("Objeto 1")
         
         self.app.mainloop()
     
     def quit(self, event=None):
         self.app.quit()  
     
-    def binds(self):
+    def binds(self, objeto_selecionado):
         
-       # Botão 1 do teclado para printar os valores obtidos nos entrys
+        # Botão 1 do teclado para printar os valores obtidos nos entrys
         self.app.bind("<F1>", self.print_values)
         
         # Botão 2 do teclado para pegar os valores dos entrys
@@ -92,7 +98,138 @@ class Screen():
         
         # Botao 12 do teclado fecha o programa
         self.app.bind("<F12>", self.quit)  
-               
+        
+        # Botão U do teclado para atualizar o canvas e redesenhar o objeto
+        self.app.bind("U", self.update_canvas)
+        
+        # Verifica qual objeto está selecionado com base no OptionMenu, para ai
+        # sim atualizar os parametros de rotacao, translacao e escala.
+        # Ele esta selecionado como [Objeto {numero}], então pegamos o numero para
+        # pegar a classe correta
+
+        # Pega o numero do objeto selecionado
+        numero_objeto = int(objeto_selecionado.split(" ")[1]) - 1
+        
+        # Pega a classe do objeto selecionado
+        objeto = self.files_classes[numero_objeto]
+        
+        # Define os botoes de rotacao, translacao e escala
+        self.app.bind("<Left>", lambda event: self.update_translacao_esquerda(objeto))
+        self.app.bind("<Right>", lambda event: self.update_translacao_direita(objeto))
+        self.app.bind("<Up>", lambda event: self.update_translacao_cima(objeto))
+        self.app.bind("<Down>", lambda event: self.update_translacao_baixo(objeto))
+        self.app.bind("1", lambda event: self.update_rotacao_x_mais(objeto))
+        self.app.bind("2", lambda event: self.update_rotacao_x_menos(objeto))
+        self.app.bind("3", lambda event: self.update_rotacao_y_mais(objeto))
+        self.app.bind("4", lambda event: self.update_rotacao_y_menos(objeto))
+        self.app.bind("5", lambda event: self.update_rotacao_z_mais(objeto))
+        self.app.bind("6", lambda event: self.update_rotacao_z_menos(objeto))
+        self.app.bind("7", lambda event: self.update_escala_mais(objeto))
+        self.app.bind("8", lambda event: self.update_escala_menos(objeto))
+        
+        
+    def update_rotacao_x_mais(self, objeto, event=None):
+        
+        objeto.update_rotacao(2, 0, 0)
+        self.update_canvas()
+        
+    def update_rotacao_x_menos(self, objeto, event=None):
+            
+        objeto.update_rotacao(-2, 0, 0)
+        self.update_canvas()
+    
+    def update_rotacao_y_mais(self, objeto, event=None):
+            
+        objeto.update_rotacao(0, 2, 0)
+        self.update_canvas()   
+        
+    def update_rotacao_y_menos(self, objeto, event=None):
+                
+        objeto.update_rotacao(0, -2, 0)
+        self.update_canvas()     
+        
+    def update_rotacao_z_mais(self, objeto, event=None):
+                    
+        objeto.update_rotacao(0, 0, 2)
+        self.update_canvas()    
+    
+    def update_rotacao_z_menos(self, objeto, event=None):
+        
+        objeto.update_rotacao(0, 0, -2)
+        self.update_canvas()
+        
+    def update_translacao_esquerda(self, objeto, event=None):
+        
+        objeto.update_translacao(-10, 0)
+        self.update_canvas()
+        
+    def update_translacao_direita(self, objeto, event=None):
+        
+        objeto.update_translacao(10, 0)
+        self.update_canvas()
+        
+    def update_translacao_cima(self, objeto, event=None):
+        
+        objeto.update_translacao(0, -10)
+        self.update_canvas()
+        
+    def update_translacao_baixo(self, objeto, event=None):
+        
+        objeto.update_translacao(0, 10)
+        self.update_canvas()
+        
+    def update_escala_mais(self, objeto, event=None):
+        
+        objeto.update_escala(1.1)
+        self.update_canvas()
+        
+    def update_escala_menos(self, objeto, event=None):
+        
+        objeto.update_escala(0.9)
+        self.update_canvas()
+   
+    def update_canvas(self, event=None):
+        
+        # Limpa o canvas
+        self.canvas.delete("all")
+        
+        # Plota novamente todos os objetos
+        for objeto in self.files_classes:
+            
+            self.draw_mesh(objeto)
+            
+        # Recria as binds para os botões apenas se o usuário mudou o objeto
+        self.binds(self.optionmenu_var.get())
+        
+    def projeta_ponto(self, vertice, width=800, height=800):
+        
+        x = vertice[0] + width / 2
+        y = vertice[1] + height / 2
+        return x, y
+
+    def draw_mesh(self, objeto, width=800, height=800):
+        
+        # Separa a mesh do objeto selecionado
+        mesh = objeto.mesh
+
+        # Itera sobre todas as faces
+        for face in mesh.faces():
+            # Obtem os vértices da face
+            vertices = [mesh.point(vh) for vh in mesh.fv(face)]
+
+            print("Vertices: ", vertices)
+            print("objeto.rotacao: ", objeto.rotacao)
+            print("objeto.translacao: ", objeto.translacao)
+            print("objeto.escala: ", objeto.escala)
+
+            transformacao_vertices = aplica_transformacao(vertices, objeto.rotacao, objeto.translacao, objeto.escala)
+
+            # Projeta os vértices 3d para 2d
+            projected = [self.projeta_ponto(v) for v in transformacao_vertices]
+
+            # Desenha a face
+            self.canvas.create_polygon(projected, outline="black", fill="gray")
+    
     def grid_canvas_column(self):
         
         # Define a configuração de colunas, dividindo em 2
@@ -149,15 +286,15 @@ class Screen():
         
         # Cria uma lista com as strings Objeto 1, Objeto 2, Objeto 3, ..., com
         # base na quantidade de classes dentro da lista files_classes
-        opcoes = ["Objeto " + str(i+1) for i in range(len(self.files_classes))]
+        self.opcoes = ["Objeto " + str(i+1) for i in range(len(self.files_classes))]
         
         self.label_objeto = ctk.CTkLabel(self.frame_objeto, text="Seleção de Objetos",
                                         text_color="White", justify="center", font=("Arial", 15))
         self.label_objeto.grid(row=0, column=0, padx=10, pady=10)    
         
-        optionmenu_var = ctk.StringVar(value="Objeto 1")
-        self.opcao_menu = ctk.CTkOptionMenu(self.frame_objeto, values=opcoes,
-                                            variable=optionmenu_var)
+        self.optionmenu_var = ctk.StringVar(value="Objeto 1")
+        self.opcao_menu = ctk.CTkOptionMenu(self.frame_objeto, values=self.opcoes,
+                                            variable=self.optionmenu_var)
         self.opcao_menu.grid(row=0, column=1, padx=10, pady=10)
            
     def dados_view_port(self):
@@ -354,21 +491,21 @@ class Screen():
         self.entry_distancia_ao_plano_projecao = ctk.CTkEntry(self.frame_distancia_ao_plano, width=100, placeholder_text=10)
         self.entry_distancia_ao_plano_projecao.grid(row=1, column=1, pady=10)
         
-        # self.label_distancia_ao_plano_near = ctk.CTkLabel(self.frame_distancia_ao_plano, text="Near",
-        #                                     text_color="White", justify="center", font=("Arial", 15))
+        self.label_distancia_ao_plano_near = ctk.CTkLabel(self.frame_distancia_ao_plano, text="Near",
+                                            text_color="White", justify="center", font=("Arial", 15))
         
-        # self.label_distancia_ao_plano_near.grid(row=1, column=2, pady=10, padx=10)
+        self.label_distancia_ao_plano_near.grid(row=1, column=2, pady=10, padx=10)
         
-        # self.entry_distancia_ao_plano_near = ctk.CTkEntry(self.frame_distancia_ao_plano, width=100, placeholder_text=5)
-        # self.entry_distancia_ao_plano_near.grid(row=1, column=3, pady=10)
+        self.entry_distancia_ao_plano_near = ctk.CTkEntry(self.frame_distancia_ao_plano, width=100, placeholder_text=5)
+        self.entry_distancia_ao_plano_near.grid(row=1, column=3, pady=10)
         
-        # self.label_distancia_ao_plano_far = ctk.CTkLabel(self.frame_distancia_ao_plano, text="Far",
-        #                                     text_color="White", justify="center", font=("Arial", 15))
+        self.label_distancia_ao_plano_far = ctk.CTkLabel(self.frame_distancia_ao_plano, text="Far",
+                                            text_color="White", justify="center", font=("Arial", 15))
         
-        # self.label_distancia_ao_plano_far.grid(row=2, column=0, pady=10)
+        self.label_distancia_ao_plano_far.grid(row=2, column=0, pady=10)
         
-        # self.entry_distancia_ao_plano_far = ctk.CTkEntry(self.frame_distancia_ao_plano, width=100, placeholder_text=15)
-        # self.entry_distancia_ao_plano_far.grid(row=2, column=1, pady=10)
+        self.entry_distancia_ao_plano_far = ctk.CTkEntry(self.frame_distancia_ao_plano, width=100, placeholder_text=15)
+        self.entry_distancia_ao_plano_far.grid(row=2, column=1, pady=10)
                                                               
     def dados_janela_mundo(self):
         
@@ -716,7 +853,11 @@ class Screen():
             # Verificação da distância ao plano
             if self.entry_distancia_ao_plano_projecao.get() == "":
                 self.entry_distancia_ao_plano_projecao.insert(0, 10)
-                
+            if self.entry_distancia_ao_plano_near.get() == "":
+                self.entry_distancia_ao_plano_near.insert(0, 5)
+            if self.entry_distancia_ao_plano_far.get() == "":
+                self.entry_distancia_ao_plano_far.insert(0, 15)    
+              
             # Verificação da janela mundo
             if self.entry_janela_mundo_xMin.get() == "":
                 self.entry_janela_mundo_xMin.insert(0, -10)
@@ -801,7 +942,9 @@ class Screen():
         ponto_focal_z = int(self.entry_ponto_focal_z.get())
         
         dp = int(self.entry_distancia_ao_plano_projecao.get())
-        
+        near = int(self.entry_distancia_ao_plano_near.get())
+        far = int(self.entry_distancia_ao_plano_far.get())
+                
         janela_mundo_xMin = int(self.entry_janela_mundo_xMin.get())
         janela_mundo_xMax = int(self.entry_janela_mundo_xMax.get())
         janela_mundo_yMin = int(self.entry_janela_mundo_yMin.get())
@@ -832,6 +975,35 @@ class Screen():
         coordenadas_fonte_luz_z = int(self.entry_coordenadas_fonte_luz_z.get())
         
         n = float(self.entry_n.get())
+        
+        
+        # PARAMETROS TESTES
+        uMin = 0
+        uMax = 800
+        vMin = 0
+        vMax = 800
+        
+        view_up_x = 0
+        view_up_y = 1
+        view_up_z = 0
+        
+        vrp_x = 160
+        vrp_y = 600
+        vrp_z = 0
+        
+        ponto_focal_x = 160
+        ponto_focal_y = 600
+        ponto_focal_z = -170
+        
+        dp = 10
+        near = 10
+        far = 350
+        
+        janela_mundo_xMin = 90
+        janela_mundo_xMax = 620
+        janela_mundo_yMin = 150
+        janela_mundo_yMax = 1050
+        
         
         # Verifica o tipo de projeção, para depois calcular as matrizes
         if self.radio_var_projecao.get() == 0:
@@ -902,20 +1074,20 @@ class Screen():
             mesh_objetos_modificado.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
         
         
-        # Pega a primeira mesh da lista de meshes
-        mesh = mesh_objetos_modificado[0]
+        # # Pega a primeira mesh da lista de meshes
+        # mesh = mesh_objetos_modificado[0]
 
-        # Iterar sobre todas as faces
-        for fh in mesh.faces():
-            # Obter os vértices de cada face
-            vertices = [vh.idx() for vh in mesh.fv(fh)]
-            print("Face inicial: ", vertices)      
+        # # Iterar sobre todas as faces
+        # for fh in mesh.faces():
+        #     # Obter os vértices de cada face
+        #     vertices = [vh.idx() for vh in mesh.fv(fh)]
+        #     print("Face inicial: ", vertices)      
     
-        # Iterar sobre todos os vértices
-        for vh in mesh.vertices():
-            # Obter a posição de cada vértice
-            position = mesh.point(vh)
-            print("Vértice inicial: ", position)
+        # # Iterar sobre todos os vértices
+        # for vh in mesh.vertices():
+        #     # Obter a posição de cada vértice
+        #     position = mesh.point(vh)
+        #     print("Vértice inicial: ", position)
         
         
         # Aplicação do sombreamento constante
@@ -930,39 +1102,28 @@ class Screen():
             # Percorre todas as faces da mesh
             for fh in mesh_objetos_modificado[i].faces():
                 
-                mesh_objeto_sombreamento.request_face_colors()
-                
-                color = aplicacao_sombreamento(mesh_objetos_modificado[i], fh, 
-                                                vrp_x, vrp_y, vrp_z,
-                                                luz_ambiente_Ila_r, luz_ambiente_Ila_g, luz_ambiente_Ila_b,
-                                                luz_pontual_Il_r, luz_pontual_Il_g, luz_pontual_Il_b,
-                                                coordenadas_fonte_luz_x, coordenadas_fonte_luz_y, coordenadas_fonte_luz_z,
-                                                sombreamento_Ka_r, sombreamento_Ka_g, sombreamento_Ka_b,
-                                                sombreamento_Kd_r, sombreamento_Kd_g, sombreamento_Kd_b,
-                                                sombreamento_Ks_r, sombreamento_Ks_g, sombreamento_Ks_b, n)
-                
-                # Garante que a cor não passe os limites e esteja entre 0 e 255
-                color = np.clip(color, 0, 255)
-                
-                print(color)
-            
-                # Adiciona a mesh modificada com o sombreamento constante
-                mesh_objeto_sombreamento.set_color(fh, color) # -> ERRADO
-                
+                mesh_objeto_sombreamento = aplicacao_sombreamento(mesh_objetos_modificado[i], fh, 
+                                                                vrp_x, vrp_y, vrp_z,
+                                                                luz_ambiente_Ila_r, luz_ambiente_Ila_g, luz_ambiente_Ila_b,
+                                                                luz_pontual_Il_r, luz_pontual_Il_g, luz_pontual_Il_b,
+                                                                coordenadas_fonte_luz_x, coordenadas_fonte_luz_y, coordenadas_fonte_luz_z,
+                                                                sombreamento_Ka_r, sombreamento_Ka_g, sombreamento_Ka_b,
+                                                                sombreamento_Kd_r, sombreamento_Kd_g, sombreamento_Kd_b,
+                                                                sombreamento_Ks_r, sombreamento_Ks_g, sombreamento_Ks_b, n)
+                                        
             # Adiciona a mesh modificada com o sombreamento constante
             mesh_objeto_modificado_sombreamento.append(mesh_objeto_sombreamento)
-           
-           
-        # Pega a primeira mesh da lista de meshes
-        mesh = mesh_objeto_modificado_sombreamento[0] 
-        # Iterate over all faces and print their colors
-        for fh in mesh.faces():
-            color = mesh.color(fh)
-            print(f"Face {fh.idx()}: Color {color}")                                  
+              
+        # # Pega a primeira mesh da lista de mesheswsl
+        # mesh = mesh_objeto_modificado_sombreamento[0] 
+        # # Iterate over all faces and print their colors
+        # for fh in mesh.faces():
+        #     color = mesh.color(fh)
+        #     print(f"Face {fh.idx()}: Color {color}")                                  
                                    
         # Computa os vertices com a matriz de transformação obtida anteriomente
-        for i in range(len(mesh_objetos_modificado)):
-            mesh_objetos_modificado[i] = computacao_dos_vertices(mesh_objetos_modificado[i], self.Msru_srt_homogenizado)
+        for i in range(len(mesh_objeto_modificado_sombreamento)):
+            mesh_objeto_modificado_sombreamento[i] = computacao_dos_vertices(mesh_objeto_modificado_sombreamento[i], self.Msru_srt_homogenizado)
         
         
         # # Pega a primeira mesh da lista de meshes
@@ -981,7 +1142,7 @@ class Screen():
         #     print("Vértice final: ", position)
             
         # Plota os objetos na tela
-        #self.plota_objetos(mesh_objetos_modificado)
+        self.plota_objetos(mesh_objeto_modificado_sombreamento, near, far)
     
     def print_values(self, event):
             

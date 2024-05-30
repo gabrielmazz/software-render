@@ -85,6 +85,9 @@ class Screen_Wireframe():
         
     def register_points_file(self, event=None):
         
+        # Determina quantas fatias o objeto terá
+        slices = tk.simpledialog.askinteger("Quantas fatias você quer para o objeto", "Determine:", minvalue=1, maxvalue=1000)
+        
         # Conta a quantidade de arquivo para definir o final do nome do arquivo
         count = 0
         for file in os.listdir(os.path.join("Wireframe", "points")):
@@ -99,6 +102,9 @@ class Screen_Wireframe():
             # se caso o poligo tiver mais de 2 pontos
             if len(self.points) > 2:
                 file.write(f"{self.points[0][0]} {self.points[0][1]}")
+                
+            # Escreve no arquivo a quantidade de fatias
+            file.write(f"\n{slices}")
                 
         # Limpa os pontos
         self.points = []

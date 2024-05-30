@@ -1,6 +1,6 @@
 import copy
 import numpy as np
-
+from SoftwareRender.transformações_geometricas.transformacoes import calculo_centro_geometrico
 
 # Retorna todas as faces visíveis do mesh disponivel
 def verifica_faces_visiveis(mesh, 
@@ -25,3 +25,14 @@ def verifica_faces_visiveis(mesh,
     mash_visivel.garbage_collection() 
     
     return mash_visivel
+
+def verifica_mesh_visivel(mesh, near, far):
+    
+    # Calcula o centro geométrico do objeto da mesh indicada
+    CENTRO_GEOMETRICO = calculo_centro_geometrico(mesh)
+    
+    # Faz o teste de distância do centro geométrico em relação ao near e o far
+    if ((-CENTRO_GEOMETRICO[2] < near) or (-CENTRO_GEOMETRICO[2] > far)):
+        return True
+    else:
+        return False
