@@ -18,10 +18,15 @@ def computacao_dos_vertices(mesh, Msru_src_homogenizado):
         # Aplica a matriz de transformação
         coord = np.dot(Msru_src_homogenizado, coord)
         
+        coord_homogenizadas = np.array([[coord[0][0] / coord[3][0]],
+                                        [coord[1][0] / coord[3][0]],
+                                        [coord[2][0]],
+                                        [coord[3][0]]])
+        
         # Atualiza as coordenadas do vértice
-        mesh.point(vh)[0] = coord[0]
-        mesh.point(vh)[1] = coord[1]
-        mesh.point(vh)[2] = coord[2]
+        mesh.point(vh)[0] = coord_homogenizadas[0]
+        mesh.point(vh)[1] = coord_homogenizadas[1]
+        mesh.point(vh)[2] = coord_homogenizadas[2]
         
     return mesh
         

@@ -13,6 +13,9 @@ class Screen_Wireframe():
         self.app.title("Wireframe")
         self.app.geometry("1610x900")
         
+        self.photo = tk.PhotoImage(file="img/formas.png")
+        self.app.iconphoto(False, self.photo)
+        
         self.points = []
         
         self.create_frame_grid()
@@ -70,6 +73,7 @@ class Screen_Wireframe():
         
         # Registra o clique q do teclado
         self.app.bind("q", self.register_points_file)
+        self.app.bind("Q", self.register_points_file)
     
     def click(self, event):
             

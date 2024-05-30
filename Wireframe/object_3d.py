@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import openmesh as om
-import tkinter as tk
+import copy
 
 class Points_Object():
     

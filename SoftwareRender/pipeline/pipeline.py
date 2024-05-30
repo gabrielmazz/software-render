@@ -82,26 +82,37 @@ def Msru_srt(Msru_src, Mproj, Mjp):
 
     return Msru_srt
 
-
-def homogenizar(Msru_srt):
+def homogenizar(mesh, coordenada):
     
-    # Recebe o fator de homogenização, utilizado para dividir os pontos
-    h_coluna_1 = Msru_srt[3][0]
-    h_coluna_2 = Msru_srt[3][1]
-    h_coluna_3 = Msru_srt[3][2]
-    h_coluna_4 = Msru_srt[3][3]
-    
-    # Evita divisão por zero
-    epsilon = constants.epsilon_0
-    h_coluna_1 = h_coluna_1 if h_coluna_1 != 0 else epsilon
-    h_coluna_2 = h_coluna_2 if h_coluna_2 != 0 else epsilon
-    h_coluna_3 = h_coluna_3 if h_coluna_3 != 0 else epsilon
-    h_coluna_4 = h_coluna_4 if h_coluna_4 != 0 else epsilon
-    
-    # Homogenizando a matriz
-    Msru_srt_homogenizado = np.array([[(Msru_srt[0][0] / h_coluna_1), (Msru_srt[0][1] / h_coluna_2), (Msru_srt[0][2] / h_coluna_3), (Msru_srt[0][3] / h_coluna_4)],
-                                      [(Msru_srt[1][0] / h_coluna_1), (Msru_srt[1][1] / h_coluna_2), (Msru_srt[1][2] / h_coluna_3), (Msru_srt[1][3] / h_coluna_4)],
-                                      [Msru_srt[2][0], Msru_srt[2][1], Msru_srt[2][2], Msru_srt[2][3]],
-                                      [(h_coluna_1 / h_coluna_1), (h_coluna_2 / h_coluna_2), (h_coluna_3 / h_coluna_3), (h_coluna_4 / h_coluna_4)]])
-    
-    return Msru_srt_homogenizado
+    for vh in mesh.vertices():
+        
+        # Resgata a posição dos vertices
+        position = mesh.point(vh)
+        
+        # Rearranja em uma matriz 4x1
+        position = np.append(position, coordenada)
+        
+        position = position.reshape((4, 1))
+        
+        # Processo de homogenização
+        
+        position_homogenizada = np.array([[position[0][0] / position[3][0]],
+                                          [position[1][0] / position[3][0]],
+                                          [position[2][0]],
+                                          [position[3][0]]])
+        
+        print(position_homogenizada)
+        
+        print(position_homogenizada[0][0])
+        print(position_homogenizada[1][0])
+        print(position_homogenizada[2][0])
+        
+        # Atualiza a posição do vertice
+        mesh.set_point(vh)[0] = position_homogenizada[0][0]
+        mesh.set_point(vh)[1] = position_homogenizada[1][0]
+        mesh.set_point(vh)[2] = position_homogenizada[2][0]
+        
+    return mesh
+        
+        
+        

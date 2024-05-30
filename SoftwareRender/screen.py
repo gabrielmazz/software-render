@@ -15,6 +15,7 @@ from SoftwareRender.pipeline.visibilidade import verifica_faces_visiveis, verifi
 from SoftwareRender.pipeline.sombreamento import aplicacao_sombreamento
 from SoftwareRender.pipeline.computacao_vertices import computacao_dos_vertices
 from SoftwareRender.transformações_geometricas.transformacoes import aplica_transformacao
+from SoftwareRender.utilidades.ferramentas import rgb_to_hex
 
 class Screen():
     
@@ -25,12 +26,20 @@ class Screen():
         # Define a lista de classes de objetos
         self.files_classes = files_classes
         
+        # Define um backup da lista de classes de objetos
+        self.backup_files_classes = copy.deepcopy(files_classes)
+        
         # Define a aparência da tela principal como dark
         ctk.set_appearance_mode("dark")
         
         self.app = ctk.CTk()
         self.app.title("T02 - Software Render")
         self.app.geometry("1600x900")
+
+        self.app.resizable(False, False)
+
+        self.photo = tk.PhotoImage(file="img/formas.png")
+        self.app.iconphoto(False, self.photo)
 
         # Define o grid da tela (tela inteira)
         self.grid_canvas_column()
@@ -66,10 +75,10 @@ class Screen():
         self.Matrix_sru_srt = None
         self.Msru_srt_homogenizado = None
 
-        
+        self.fill_color = False
+
         # Desenha todos os objetos na tela
         for objeto in self.files_classes:
-            
             self.draw_mesh(objeto)
         
     def run(self):
@@ -100,7 +109,13 @@ class Screen():
         self.app.bind("<F12>", self.quit)  
         
         # Botão U do teclado para atualizar o canvas e redesenhar o objeto
+        self.app.bind("u", self.update_canvas)
         self.app.bind("U", self.update_canvas)
+        
+        # Botão R do teclado para restaurar os valores dos objetos
+        self.app.bind("r", self.restaura_files_classes)
+        self.app.bind("R", self.restaura_files_classes)
+        
         
         # Verifica qual objeto está selecionado com base no OptionMenu, para ai
         # sim atualizar os parametros de rotacao, translacao e escala.
@@ -118,16 +133,31 @@ class Screen():
         self.app.bind("<Right>", lambda event: self.update_translacao_direita(objeto))
         self.app.bind("<Up>", lambda event: self.update_translacao_cima(objeto))
         self.app.bind("<Down>", lambda event: self.update_translacao_baixo(objeto))
-        self.app.bind("1", lambda event: self.update_rotacao_x_mais(objeto))
-        self.app.bind("2", lambda event: self.update_rotacao_x_menos(objeto))
-        self.app.bind("3", lambda event: self.update_rotacao_y_mais(objeto))
-        self.app.bind("4", lambda event: self.update_rotacao_y_menos(objeto))
-        self.app.bind("5", lambda event: self.update_rotacao_z_mais(objeto))
-        self.app.bind("6", lambda event: self.update_rotacao_z_menos(objeto))
-        self.app.bind("7", lambda event: self.update_escala_mais(objeto))
-        self.app.bind("8", lambda event: self.update_escala_menos(objeto))
         
+        self.app.bind("w", lambda event: self.update_rotacao_x_mais(objeto))
+        self.app.bind("W", lambda event: self.update_rotacao_x_mais(objeto))
         
+        self.app.bind("s", lambda event: self.update_rotacao_x_menos(objeto))
+        self.app.bind("S", lambda event: self.update_rotacao_x_menos(objeto))
+        
+        self.app.bind("a", lambda event: self.update_rotacao_y_mais(objeto))
+        self.app.bind("A", lambda event: self.update_rotacao_y_mais(objeto))
+        
+        self.app.bind("d", lambda event: self.update_rotacao_y_menos(objeto))
+        self.app.bind("D", lambda event: self.update_rotacao_y_menos(objeto))
+        
+        self.app.bind("q", lambda event: self.update_rotacao_z_mais(objeto))
+        self.app.bind("Q", lambda event: self.update_rotacao_z_mais(objeto))
+        
+        self.app.bind("e", lambda event: self.update_rotacao_z_menos(objeto))
+        self.app.bind("E", lambda event: self.update_rotacao_z_menos(objeto))
+        
+        self.app.bind("z", lambda event: self.update_escala_mais(objeto))
+        self.app.bind("Z", lambda event: self.update_escala_mais(objeto))
+        
+        self.app.bind("x", lambda event: self.update_escala_menos(objeto))
+        self.app.bind("X", lambda event: self.update_escala_menos(objeto))
+                   
     def update_rotacao_x_mais(self, objeto, event=None):
         
         objeto.update_rotacao(2, 0, 0)
@@ -200,11 +230,20 @@ class Screen():
             
         # Recria as binds para os botões apenas se o usuário mudou o objeto
         self.binds(self.optionmenu_var.get())
+     
+    def restaura_files_classes(self, event=None):
+        
+        # Restaura os valores dos objetos antes das transformações
+        self.files_classes = copy.deepcopy(self.backup_files_classes)
+        
+        # Atualiza o canvas
+        self.update_canvas()
         
     def projeta_ponto(self, vertice, width=800, height=800):
         
         x = vertice[0] + width / 2
         y = vertice[1] + height / 2
+        
         return x, y
 
     def draw_mesh(self, objeto, width=800, height=800):
@@ -214,13 +253,9 @@ class Screen():
 
         # Itera sobre todas as faces
         for face in mesh.faces():
+            
             # Obtem os vértices da face
             vertices = [mesh.point(vh) for vh in mesh.fv(face)]
-
-            print("Vertices: ", vertices)
-            print("objeto.rotacao: ", objeto.rotacao)
-            print("objeto.translacao: ", objeto.translacao)
-            print("objeto.escala: ", objeto.escala)
 
             transformacao_vertices = aplica_transformacao(vertices, objeto.rotacao, objeto.translacao, objeto.escala)
 
@@ -228,7 +263,23 @@ class Screen():
             projected = [self.projeta_ponto(v) for v in transformacao_vertices]
 
             # Desenha a face
-            self.canvas.create_polygon(projected, outline="black", fill="gray")
+            
+            if self.fill_color == True:
+                
+                # Resgate a cor da face
+                color = mesh.color(face)
+                
+                # Retira a ultima posição da cor que é 1
+                color = color[:-1]
+                
+                # Converte a cor para hexadecimal
+                color = rgb_to_hex(color)
+            
+                self.canvas.create_polygon(projected, outline="black", fill=color)
+                
+            else:
+                
+                self.canvas.create_polygon(projected, outline="black", fill="gray")
     
     def grid_canvas_column(self):
         
@@ -577,21 +628,21 @@ class Screen():
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Ka_r.grid(row=1, column=0, pady=10)
         
-        self.entry_sombreamento_Ka_r = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_r = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.4)
         self.entry_sombreamento_Ka_r.grid(row=1, column=1, pady=10)
         
         self.label_sombreamento_Ka_g = ctk.CTkLabel(self.frame_sombreamento_Ka, text="G",
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Ka_g.grid(row=1, column=2, pady=10)
         
-        self.entry_sombreamento_Ka_g = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_g = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.4)
         self.entry_sombreamento_Ka_g.grid(row=1, column=3, pady=10)
         
         self.label_sombreamento_Ka_b = ctk.CTkLabel(self.frame_sombreamento_Ka, text="B",
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Ka_b.grid(row=1, column=4, pady=10)
         
-        self.entry_sombreamento_Ka_b = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Ka_b = ctk.CTkEntry(self.frame_sombreamento_Ka, width=100, placeholder_text=0.4)
         self.entry_sombreamento_Ka_b.grid(row=1, column=5, pady=10, padx=10)
         
     def sombreamento_Kd(self):
@@ -617,21 +668,21 @@ class Screen():
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Kd_r.grid(row=1, column=0, pady=10)
         
-        self.entry_sombreamento_Kd_r = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_r = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.7)
         self.entry_sombreamento_Kd_r.grid(row=1, column=1, pady=10)
         
         self.label_sombreamento_Kd_g = ctk.CTkLabel(self.frame_sombreamento_Kd, text="G",
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Kd_g.grid(row=1, column=2, pady=10)
         
-        self.entry_sombreamento_Kd_g = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_g = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.7)
         self.entry_sombreamento_Kd_g.grid(row=1, column=3, pady=10)
         
         self.label_sombreamento_Kd_b = ctk.CTkLabel(self.frame_sombreamento_Kd, text="B",
                                             text_color="White", justify="center", font=("Arial", 15))
         self.label_sombreamento_Kd_b.grid(row=1, column=4, pady=10)
         
-        self.entry_sombreamento_Kd_b = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.5)
+        self.entry_sombreamento_Kd_b = ctk.CTkEntry(self.frame_sombreamento_Kd, width=100, placeholder_text=0.7)
         self.entry_sombreamento_Kd_b.grid(row=1, column=5, pady=10, padx=10)
         
     def sombreamento_Ks(self):
@@ -870,19 +921,19 @@ class Screen():
             
             # Verificação do sombreamento Ka
             if self.entry_sombreamento_Ka_r.get() == "":
-                self.entry_sombreamento_Ka_r.insert(0, 0.5)
+                self.entry_sombreamento_Ka_r.insert(0, 0.4)
             if self.entry_sombreamento_Ka_g.get() == "":
-                self.entry_sombreamento_Ka_g.insert(0, 0.5)
+                self.entry_sombreamento_Ka_g.insert(0, 0.4)
             if self.entry_sombreamento_Ka_b.get() == "":
-                self.entry_sombreamento_Ka_b.insert(0, 0.5)
+                self.entry_sombreamento_Ka_b.insert(0, 0.4)
                 
             # Verificação do sombreamento Kd
             if self.entry_sombreamento_Kd_r.get() == "":
-                self.entry_sombreamento_Kd_r.insert(0, 0.5)
+                self.entry_sombreamento_Kd_r.insert(0, 0.7)
             if self.entry_sombreamento_Kd_g.get() == "":
-                self.entry_sombreamento_Kd_g.insert(0, 0.5)
+                self.entry_sombreamento_Kd_g.insert(0, 0.7)
             if self.entry_sombreamento_Kd_b.get() == "":
-                self.entry_sombreamento_Kd_b.insert(0, 0.5)
+                self.entry_sombreamento_Kd_b.insert(0, 0.7)
                 
             # Verificação do sombreamento Ks
             if self.entry_sombreamento_Ks_r.get() == "":
@@ -975,36 +1026,7 @@ class Screen():
         coordenadas_fonte_luz_z = int(self.entry_coordenadas_fonte_luz_z.get())
         
         n = float(self.entry_n.get())
-        
-        
-        # PARAMETROS TESTES
-        uMin = 0
-        uMax = 800
-        vMin = 0
-        vMax = 800
-        
-        view_up_x = 0
-        view_up_y = 1
-        view_up_z = 0
-        
-        vrp_x = 160
-        vrp_y = 600
-        vrp_z = 0
-        
-        ponto_focal_x = 160
-        ponto_focal_y = 600
-        ponto_focal_z = -170
-        
-        dp = 10
-        near = 10
-        far = 350
-        
-        janela_mundo_xMin = 90
-        janela_mundo_xMax = 620
-        janela_mundo_yMin = 150
-        janela_mundo_yMax = 1050
-        
-        
+    
         # Verifica o tipo de projeção, para depois calcular as matrizes
         if self.radio_var_projecao.get() == 0:
                 
@@ -1022,9 +1044,6 @@ class Screen():
             
             # Calcula a matriz de transformação Msru_srt
             self.Matrix_sru_srt = Msru_srt(self.Matrix_sru_src, self.Matrix_proj, self.Matrix_jp)
-        
-            # Homogeniza a matriz de transformação
-            self.Msru_srt_homogenizado = homogenizar(self.Matrix_sru_srt)
            
         elif self.radio_var_projecao.get() == 1:
                 
@@ -1042,10 +1061,13 @@ class Screen():
             
             # Calcula a matriz de transformação Msru_srt
             self.Matrix_sru_srt = Msru_srt(self.Matrix_sru_src, self.Matrix_proj, self.Matrix_jp)
-    
-            # Homogeniza a matriz de transformação
-            self.Msru_srt_homogenizado = homogenizar(self.Matrix_sru_srt)
-            
+          
+        # PRINTA AS MATRIZES
+        print("Matriz de transformação Msru_src: \n", self.Matrix_sru_src)
+        print("\n\nMatriz de projeção: \n", self.Matrix_proj)  
+        print("\n\nMatriz de janela de projeção: \n", self.Matrix_jp)
+        print("\n\nMatriz de transformação Msru_srt: \n", self.Matrix_sru_srt)
+          
         # # Pega a primeira mesh da lista de meshes
         # mesh = self.files_classes[0].mesh
 
@@ -1061,20 +1083,44 @@ class Screen():
         #     position = mesh.point(vh)
         #     print("Vértice inicial: ", position)
             
-        
-        # Visualiza se as faces das mash são visiveis, passando por todas
-        # dentro da classe que está na lista files_classes
         mesh_objetos_modificado = []
-        for objeto in self.files_classes:
+        # Computa os vertices com a matriz de transformação obtida anteriomente
+        for i in range(len(self.files_classes)):
             
             # Separa a mash do objeto (apenas por conveniência)
-            mesh = copy.deepcopy(objeto.mesh)
+            mesh = copy.deepcopy(self.files_classes[i].mesh)
             
-            # Verfica se as faces são visíveis
-            mesh_objetos_modificado.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
+            mesh_mod = computacao_dos_vertices(mesh, self.Matrix_sru_srt)
+           
+            mesh_objetos_modificado.append(mesh_mod)
+
+       
+        #  # Pega a primeira mesh da lista de meshes
+        # mesh = mesh_objetos_modificado[0]
+
+        # # Iterar sobre todas as faces
+        # for fh in mesh.faces():
+        #     # Obter os vértices de cada face
+        #     vertices = [vh.idx() for vh in mesh.fv(fh)]
+        #     print("Face: ", vertices)      
+    
+        # # Iterar sobre todos os vértices
+        # for vh in mesh.vertices():
+        #     # Obter a posição de cada vértice
+        #     position = mesh.point(vh)
+        #     print("Vértice: ", position)
         
         
-        # # Pega a primeira mesh da lista de meshes
+        # Visualiza se as faces das mash são visiveis, passando por todas
+        # dentro da lista mesh_objetos_modificado
+        mesh_objetos_modificado_verificacao_faces = []
+        for mesh in mesh_objetos_modificado:
+            
+            # Verifica se as faces são visíveis
+            mesh_objetos_modificado_verificacao_faces.append(verifica_faces_visiveis(mesh, vrp_x, vrp_y, vrp_z, ponto_focal_x, ponto_focal_y, ponto_focal_z))
+        
+        
+        # # # Pega a primeira mesh da lista de meshes
         # mesh = mesh_objetos_modificado[0]
 
         # # Iterar sobre todas as faces
@@ -1088,14 +1134,14 @@ class Screen():
         #     # Obter a posição de cada vértice
         #     position = mesh.point(vh)
         #     print("Vértice inicial: ", position)
-        
-        
+    
+    
         # Aplicação do sombreamento constante
         mesh_objeto_modificado_sombreamento = []
-        for i in range(len(mesh_objetos_modificado)):
+        for i in range(len(mesh_objetos_modificado_verificacao_faces)):
             
             # Aplica uma copia da mesh modificada
-            mesh_objeto_sombreamento = copy.deepcopy(mesh_objetos_modificado[i])
+            mesh_objeto_sombreamento = copy.deepcopy(mesh_objetos_modificado_verificacao_faces[i])
             
             print(mesh_objeto_sombreamento)
             
@@ -1114,36 +1160,41 @@ class Screen():
             # Adiciona a mesh modificada com o sombreamento constante
             mesh_objeto_modificado_sombreamento.append(mesh_objeto_sombreamento)
               
-        # # Pega a primeira mesh da lista de mesheswsl
-        # mesh = mesh_objeto_modificado_sombreamento[0] 
-        # # Iterate over all faces and print their colors
-        # for fh in mesh.faces():
-        #     color = mesh.color(fh)
-        #     print(f"Face {fh.idx()}: Color {color}")                                  
+        # # # Pega a primeira mesh da lista de mesheswsl
+        # # mesh = mesh_objeto_modificado_sombreamento[0] 
+        # # # Iterate over all faces and print their colors
+        # # for fh in mesh.faces():
+        # #     color = mesh.color(fh)
+        # #     print(f"Face {fh.idx()}: Color {color}")                                  
                                    
-        # Computa os vertices com a matriz de transformação obtida anteriomente
-        for i in range(len(mesh_objeto_modificado_sombreamento)):
-            mesh_objeto_modificado_sombreamento[i] = computacao_dos_vertices(mesh_objeto_modificado_sombreamento[i], self.Msru_srt_homogenizado)
+        # # Computa os vertices com a matriz de transformação obtida anteriomente
+        # for i in range(len(mesh_objeto_modificado_sombreamento)):
+        #     mesh_objeto_modificado_sombreamento[i] = computacao_dos_vertices(mesh_objeto_modificado_sombreamento[i], self.Matrix_sru_srt)
         
         
-        # # Pega a primeira mesh da lista de meshes
-        # mesh = mesh_objetos_modificado[0]
+        # Pega a primeira mesh da lista de meshes
+        mesh = mesh_objeto_modificado_sombreamento[0]
         
-        # # Iterar sobre todas as faces
-        # for fh in mesh.faces():
-        #     # Obter os vértices de cada face
-        #     vertices = [vh.idx() for vh in mesh.fv(fh)]
-        #     print("Face final: ", vertices)      
+        # Iterar sobre todas as faces
+        for fh in mesh.faces():
+            # Obter os vértices de cada face
+            vertices = [vh.idx() for vh in mesh.fv(fh)]
+            print("Face final: ", vertices)      
     
-        # # Iterar sobre todos os vértices
-        # for vh in mesh.vertices():
-        #     # Obter a posição de cada vértice
-        #     position = mesh.point(vh)
-        #     print("Vértice final: ", position)
+        # Iterar sobre todos os vértices
+        for vh in mesh.vertices():
+            # Obter a posição de cada vértice
+            position = mesh.point(vh)
+            print("Vértice final: ", position)
             
-        # Plota os objetos na tela
-        self.plota_objetos(mesh_objeto_modificado_sombreamento, near, far)
-    
+        # Substitui a mesh original pela mesh modificada
+        # A função está dentro do objeto da classe
+        for objeto in range(len(self.files_classes)):
+            self.files_classes[objeto].mesh = mesh_objeto_modificado_sombreamento[objeto]
+            
+        # Para pintar
+        self.fill_color = True
+     
     def print_values(self, event):
             
         console = Console()
