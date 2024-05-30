@@ -275,11 +275,11 @@ class Screen():
                 # Converte a cor para hexadecimal
                 color = rgb_to_hex(color)
             
-                self.canvas.create_polygon(projected, outline="black", fill=color)
+                self.canvas.create_polygon(projected, outline=color, fill=color)
                 
             else:
                 
-                self.canvas.create_polygon(projected, outline="black", fill="gray")
+                self.canvas.create_polygon(projected, outline="gray", fill="gray")
     
     def grid_canvas_column(self):
         
