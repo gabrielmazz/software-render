@@ -173,6 +173,97 @@ def update_color(self, color):
     self.color = color
 
 ```
+
+Para a realização das transformações do objeto em tela, são usado as matrizes abaixo para calcular a posição nova do objeto, dependendo de qual foi escolhida
+
+$$Translacao \rightarrow \begin{bmatrix}
+x' \\
+y' \\
+1 
+\end{bmatrix} = 
+\begin{bmatrix}
+1 & 0 & dx \\
+0 & 1 & dy \\
+0 & 0 & 1 
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1 
+\end{bmatrix}
+$$
+
+$$Escala \rightarrow \begin{bmatrix}
+x' \\
+y' \\
+1 
+\end{bmatrix} = 
+\begin{bmatrix}
+S_x & 0 & 0 \\
+0 & S_y & 0 \\
+0 & 0 & 1 
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1 
+\end{bmatrix}
+$$
+
+$$Rotacao \ em \ x \rightarrow 
+\begin{bmatrix}
+x' \\
+y' \\
+1 
+\end{bmatrix} = 
+\begin{bmatrix}
+1 & 0 & 0 \\
+0 & \cos(\theta_x) & -\sin(\theta_x) \\
+0 & \sin(\theta_x) & \cos(\theta_x)
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1 
+\end{bmatrix}
+$$
+
+
+$$Rotacao \ em \ y \rightarrow 
+\begin{bmatrix}
+x' \\
+y' \\
+1 
+\end{bmatrix} = 
+\begin{bmatrix}
+\cos(\theta_y) & 0 & \sin(\theta_y) \\
+0 & 1 & 0 \\
+-\sin(\theta_y) & 0 & \cos(\theta_y)
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1 
+\end{bmatrix}
+$$
+
+$$Rotacao \ em \ z \rightarrow 
+\begin{bmatrix}
+x' \\
+y' \\
+1 
+\end{bmatrix} = \begin{bmatrix}
+\cos(\theta_z) & -\sin(\theta_z) & 0 \\
+\sin(\theta_z) & \cos(\theta_z) & 0 \\
+0 & 0 & 1
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1 
+\end{bmatrix}
+$$
+
 Dentro do software render, temos toda a composição da tela que nem o wireframe, mas toda a manipulação é feita a partir do tkinter. Com parametros definidos, ele começa a realizar as transformações, com vários arquivos em várias outras pastas, como são as matrizes do pipeline
 
 ```python
@@ -191,6 +282,92 @@ self.Matrix_jp = Mjp(uMin, uMax, vMin, vMax,
 # Calcula a matriz de transformação Msru_srt
 self.Matrix_sru_srt = Msru_srt(self.Matrix_sru_src, self.Matrix_proj, self.Matrix_jp)
 ```
+
+Já para a realização das matrizes de projeção, são utilizado as fórmulas abaixo para chegar no resultado esperado
+
+- Para a realização da matriz SRU para SRC
+
+$$ 
+\vec{N} = \vec{VRP} - \vec{P} \\
+\hat{n} = \frac{\vec{N}}{|\vec{N}|} = (n_1, n_2, n_3)
+$$
+
+<br>
+
+$$
+\vec{V} = \vec{Y} - (\vec{Y} \cdot \hat{n})\hat{n} \\
+\hat{v} = \frac{\vec{V}}{|\vec{V}|} = (v_1, v_2, v_3)
+$$
+
+<br>
+
+$$
+\vec{u} = \vec{v} \times \vec{n}
+$$
+
+<br>
+
+$$
+M_{SRU, SRC} = R \cdot T = 
+\begin{bmatrix}
+u_{1} & u_{2} & u_{3} & -VRP\cdot\hat{u} \\
+v_{1} & v_{2} & v_{3} & -VRP\cdot\hat{v} \\
+n_{1} & n_{2} & n_{3} & -VRP\cdot\hat{n}\\
+0     & 0     & 0     & 1
+\end{bmatrix}
+$$
+
+- Para a realização da matriz de projeção
+
+$$
+M_{ort} = 
+\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{bmatrix} \ ou \ M_{proj}=\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & \frac{-z_{vp}}{d_p} & z_{vp}(\frac{z_{prp}}{d_p}) & 0 \\
+0 & \frac{-1}{d_p} & \frac{z_{prp}}{d_p} & 1
+\end{bmatrix}
+$$
+
+- Para a realização da matriz de janela de projeção
+
+$$
+M_{jp} = 
+\begin{bmatrix}
+\frac{u_{max} - u_{min}}{x_{max} - x_{min}} & 0 & 0 & -\frac{x_{min}(u_{max} - u_{min})}{x_{max} - x_{min}} + u_{min} \\
+0 & \frac{v_{min} - v_{max}}{y_{max} - y_{min}} & 0 & -\frac{y_{min}(v_{max} - v_{min})}{y_{max} - y_{min}} + v_{min} \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+$$
+
+- Por fim, realiza-se a concatenação das matrizes para obter a matriz de transformação final
+
+$$
+P'=M_{SRU,SRT} \cdot P_{SRU} \rightarrow \begin{bmatrix}
+x_h \\
+y_h \\
+z' \\
+h
+\end{bmatrix}
+= M_{SRU, SRT} \cdot
+\begin{bmatrix}
+x \\
+y \\
+z \\
+1
+\end{bmatrix}
+$$
+
+$$
+x_{SRT}= \frac{x_h}{h} \ \ \
+y_{SRT}= \frac{y_h}{h} \\
+$$
 
 Quando tudo já está feito e o programa já possui a matriz concatenada da transformação so SRU para o SRT, ele computa os vertices multiplicando ele pela matriz obtido. Lembrando que isso é feito para todos os objetos simultaneamente
 
@@ -243,9 +420,29 @@ for i in range(len(mesh_objetos_modificado_verificacao_faces)):
     mesh_objeto_modificado_sombreamento.append(mesh_objeto_sombreamento)
 ```
 
+- Para realizar o calculo da *Luz Ambiente*
+
+$$
+I_{a} = K_{a} \cdot I_{la}
+$$
+
+- Para realizar o calculo da *Luz Difusa*
+
+$$
+I_{d} = K_{d} \cdot I_{l} \cdot (\hat{N} \cdot \hat{L}) \\
+\vec{L} = \vec{L} - CENTROIDE
+$$
+
+- Para realizar o calculo da *Luz Especular*
+
+$$
+I_{s} = K_{s} \cdot I_{l} \cdot (\hat{R} \cdot \hat{V})^{n} \\
+\hat{R} = 2(\hat{N} \cdot \hat{L})\hat{N} - \hat{L}
+$$
+
+
+
 Com tudo isso realizado, é dado o update no canvas e é rederizado o objeto com seus vertices modificados, faces visíveis e com o sombreamento constante, podendo ser manipulado novamente com as suas transformações
-
-
 
 
 # <p align="center">Como usar o aplicativo</p>
