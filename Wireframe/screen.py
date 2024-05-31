@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from CTkColorPicker import *
 import tkinter as tk
 import os
 
@@ -74,23 +75,39 @@ class Screen_Wireframe():
         # Registra o clique q do teclado
         self.app.bind("q", self.register_points_file)
         self.app.bind("Q", self.register_points_file)
-    
+        
     def click(self, event):
-            
+        
+        # Tamanho do grid
+        grid_size = 20
+
+        # Ajusta as coordenadas para o ponto médio mais próximo no grid
+        grid_x = round(event.x / grid_size) * grid_size
+        grid_y = round(event.y / grid_size) * grid_size
+
         # Registra o ponto clicado
-        self.points.append((event.x, event.y))
-        
+        self.points.append((grid_x, grid_y))
+
         # Desenha o ponto no canvas
-        self.canvas.create_oval(event.x-2, event.y-2, event.x+2, event.y+2, fill="red")
-        
+        self.canvas.create_oval(grid_x-2, grid_y-2, grid_x+2, grid_y+2, fill="red")
+
         # Se tiver mais de 1 ponto, desenha a linha
         if len(self.points) > 1:
             self.canvas.create_line(self.points[-2][0], self.points[-2][1], self.points[-1][0], self.points[-1][1], fill="red")
-        
+     
     def register_points_file(self, event=None):
-        
+            
+        def ask_color():
+            pick_color = AskColor() # open the color picker
+            color = pick_color.get() # get the color string
+            return color
+            
         # Determina quantas fatias o objeto terá
-        slices = tk.simpledialog.askinteger("Quantas fatias você quer para o objeto", "Determine:", minvalue=1, maxvalue=1000)
+        #slices = tk.simpledialog.askinteger("Quantas fatias você quer para o objeto", "Determine:", minvalue=1, maxvalue=1000)
+        
+        slices = ctk.CTkInputDialog(text="Entre 4 e 1000:", title="Quantidade de fatias")
+        slices = int(slices.get_input())
+        color = ask_color()
         
         # Conta a quantidade de arquivo para definir o final do nome do arquivo
         count = 0
@@ -109,7 +126,10 @@ class Screen_Wireframe():
                 
             # Escreve no arquivo a quantidade de fatias
             file.write(f"\n{slices}")
-                
+            
+            # Escreve no arquivo a cor selecionada
+            file.write(f"\n{color}")
+
         # Limpa os pontos
         self.points = []
         

@@ -28,26 +28,33 @@ class Points_Object():
         self.yn = None
         self.zn = None
         
+        # Define a cor do objeto
+        self.color = None
+        
         # Define os parametros de rotacao, translacao e escala
         self.rotacao = np.array([0, 0, 0]) # -> [rotacao_x, rotacao_y, rotacao_z]
         self.translacao = np.array([0, 0, 0])
         self.escala = 1
         
     def points_file_to_points_line(self):
+        
         # Abre o arquivo
         with open(os.path.join("Wireframe", "points", self.name), "r") as file:
             # Lê o arquivo
             lines = file.readlines()
-            
-            # Adiciona os pontos a lista não contando a ultima linha
-            for line in lines[:-1]:
+
+            # Adiciona os pontos a lista não contando as duas últimas linhas
+            for line in lines[:-2]:
                 values = line.split()
                 if len(values) >= 2:
                     x, y = values[:2]
                     self.points_line.append((int(x), int(y)))   
-            
+
             # Adiciona o número de fatias
-            self.slices = int(lines[-1])
+            self.slices = int(lines[-2])
+
+            # Adiciona a cor
+            self.color = lines[-1].strip()  # remove any trailing newline
 
     def points_x_2d(self):
             
@@ -158,3 +165,6 @@ class Points_Object():
         
     def update_escala(self, fator):
         self.escala *= fator
+        
+    def update_color(self, color):
+        self.color = color

@@ -11,6 +11,7 @@ sudo apt-get install python3-tk
 # Atualiza o pip
 pip3 install --upgrade pip
 pip3 install customtkinter
+pip3 install CTkColorPicker
 pip3 install openmesh
 
 echo "Atualização concluída!"

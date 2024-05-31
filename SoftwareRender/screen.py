@@ -15,7 +15,7 @@ from SoftwareRender.pipeline.visibilidade import verifica_faces_visiveis, verifi
 from SoftwareRender.pipeline.sombreamento import aplicacao_sombreamento
 from SoftwareRender.pipeline.computacao_vertices import computacao_dos_vertices
 from SoftwareRender.transformações_geometricas.transformacoes import aplica_transformacao
-from SoftwareRender.utilidades.ferramentas import rgb_to_hex
+from SoftwareRender.utilidades.ferramentas import rgb_to_hex, hex_to_rgb, soma_rgb
 
 class Screen():
     
@@ -263,23 +263,40 @@ class Screen():
             projected = [self.projeta_ponto(v) for v in transformacao_vertices]
 
             # Desenha a face
-            
             if self.fill_color == True:
                 
+                # Resgate a cor do objeto como um todo dentro da classe
+                color_objeto = objeto.color
+                
+                # Converte a cor do objeto para RGB
+                color_objeto = hex_to_rgb(color_objeto)
+                
                 # Resgate a cor da face
-                color = mesh.color(face)
+                color_mesh = mesh.color(face)
                 
                 # Retira a ultima posição da cor que é 1
-                color = color[:-1]
+                color_mesh = color_mesh[:-1]
                 
+                # Converte a color_mesh para uma lista
+                color_mesh = color_mesh.tolist()
+                
+                # Soma as cores do objeto e da face sombreada
+                color = soma_rgb(color_objeto, color_mesh)
+                
+                # Garante que a cor não ultrapasse 255
+                color = np.clip(color, 0, 255)
+                      
                 # Converte a cor para hexadecimal
                 color = rgb_to_hex(color)
-            
+
                 self.canvas.create_polygon(projected, outline=color, fill=color)
                 
             else:
                 
-                self.canvas.create_polygon(projected, outline="gray", fill="gray")
+                # Resgate a cor do objeto como um todo dentro da classe
+                color_objeto = objeto.color
+                
+                self.canvas.create_polygon(projected, outline=color_objeto, fill=color_objeto)
     
     def grid_canvas_column(self):
         
@@ -1194,6 +1211,9 @@ class Screen():
             
         # Para pintar
         self.fill_color = True
+        
+        # Atualiza a tela
+        self.update_canvas()
      
     def print_values(self, event):
             
