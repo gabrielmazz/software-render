@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # Roda o programa
     screen_wireframe.run()
     
-    # ======================================================================== #
+    # ========================================================================
     
     # Deleta os arquivos de pontos_3d 
     for file in os.listdir(os.path.join("Wireframe", "points_3d")):
