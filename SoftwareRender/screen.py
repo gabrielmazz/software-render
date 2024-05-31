@@ -31,6 +31,7 @@ class Screen():
         
         # Define a aparência da tela principal como dark
         ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("theme_customtkinter/theme.json")
         
         self.app = ctk.CTk()
         self.app.title("T02 - Software Render")

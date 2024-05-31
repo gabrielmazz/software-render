@@ -9,9 +9,10 @@ class Screen_Wireframe():
         
         # Define a aparência da tela principal como dark
         ctk.set_appearance_mode("dark")
-        
+        ctk.set_default_color_theme("theme_customtkinter/theme.json")
+    
         self.app = ctk.CTk()
-        self.app.title("Wireframe")
+        self.app.title("T02 - Software Render")
         self.app.geometry("1610x900")
         
         self.photo = tk.PhotoImage(file="img/formas.png")
@@ -89,11 +90,11 @@ class Screen_Wireframe():
         self.points.append((grid_x, grid_y))
 
         # Desenha o ponto no canvas
-        self.canvas.create_oval(grid_x-2, grid_y-2, grid_x+2, grid_y+2, fill="red")
+        self.canvas.create_oval(grid_x-2, grid_y-2, grid_x+2, grid_y+2, fill="purple")
 
         # Se tiver mais de 1 ponto, desenha a linha
         if len(self.points) > 1:
-            self.canvas.create_line(self.points[-2][0], self.points[-2][1], self.points[-1][0], self.points[-1][1], fill="red")
+            self.canvas.create_line(self.points[-2][0], self.points[-2][1], self.points[-1][0], self.points[-1][1], fill="purple")
      
     def register_points_file(self, event=None):
             
